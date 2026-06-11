@@ -135,6 +135,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import "./sidebar.scss"
 import {
     DataBoard, ShoppingCart, Goods, Shop, Present, Ticket, Timer, Monitor, DataAnalysis,
     Setting, UserFilled, Avatar, Document, Expand
@@ -147,82 +148,3 @@ defineProps<{
 const route = useRoute()
 const activeMenu = computed(() => route.path)
 </script>
-
-<style scoped lang="scss">
-.sidebar {
-    height: 100%;
-    position: relative;
-
-    :deep(.el-menu) {
-        border-right: none;
-        height: 100%;
-        width: 100%;
-        padding: 20px 0;
-
-        &:not(.el-menu--collapse) {
-            width: 260px;
-        }
-
-        .el-menu-item,
-        .el-sub-menu__title {
-            height: 52px;
-            line-height: 52px;
-            margin: 4px 12px;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-
-            &:hover {
-                background: rgba(102, 126, 234, 0.2) !important;
-                color: #fff !important;
-            }
-
-            &.is-active {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                color: #fff !important;
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-            }
-        }
-
-        .el-sub-menu.is-active .el-sub-menu__title {
-            color: #667eea !important;
-        }
-
-        .el-menu--inline {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
-            margin: 0 12px;
-
-            .el-menu-item {
-                padding-left: 52px !important;
-                margin: 2px 0;
-            }
-        }
-
-        .menu-badge {
-            margin-left: 8px;
-
-            :deep(.el-badge__content) {
-                transform: scale(0.8);
-            }
-        }
-    }
-
-    .collapsed-tip {
-        position: absolute;
-        bottom: 20px;
-        left: 0;
-        right: 0;
-        text-align: center;
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 12px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-
-        .el-icon {
-            font-size: 20px;
-        }
-    }
-}
-</style>
