@@ -1,17 +1,17 @@
 import request from '@/utils/request'
 
-export const loginApi = (data:any) => {
+export const loginApi = (data: any) => {
   return request({
-    url:'/auth/login',
-    method:'post',
+    url: '/auth/login',
+    method: 'post',
     data
   })
 }
-export const registerApi = (data:any) => {
+export const registerApi = (data: any) => {
 
   return request({
-    url:'/auth/register',
-    method:'post',
+    url: '/auth/register',
+    method: 'post',
     data
   })
 }

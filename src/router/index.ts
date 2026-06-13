@@ -117,6 +117,72 @@ const router = createRouter({
             }
           ]
         },
+        // ============营销中心===============
+        {
+          path: 'marketing',
+          redirect: '/marketing/coupon',
+          meta: {
+            title: '订单',
+            icon: 'DataBoard',
+            breadcrumb: true  // 是否显示在面包屑
+          },
+          children: [
+            {
+              path: 'coupon',   // ✅ 相对路径，完整：/orders/list
+              component: () => import('@/views/marketing/coupon.vue'),
+              meta: {
+                title: '优惠券管理',
+                icon: 'DataBoard',
+                breadcrumb: true  // 是否显示在面包屑
+              }
+            }, {
+              path: 'seckill',   // ✅ 相对路径，完整：/orders/list
+              component: () => import('@/views/marketing/seckill.vue'),
+              meta: {
+                title: '秒杀活动',
+                icon: 'DataBoard',
+                breadcrumb: true  // 是否显示在面包屑
+              }
+            }
+          ]
+        },
+        //=============系统设置===============
+        {
+          path: 'system',
+          redirect: '/system/admin',
+          meta: {
+            title: '系统设置',
+            icon: 'DataBoard',
+            breadcrumb: true  // 是否显示在面包屑
+          },
+          children: [
+            {
+              path: 'admin',
+              component: () => import('@/views/system/user.vue'),
+              meta: {
+                title: '管理员管理',
+                icon: 'DataBoard',
+                breadcrumb: true  // 是否显示在面包屑
+              },
+            }, {
+              path: 'role',
+              component: () => import('@/views/system/role.vue'),
+              meta: {
+                title: '角色权限',
+                icon: 'DataBoard',
+                breadcrumb: true  // 是否显示在面包屑
+              },
+            }, {
+              path: 'log',
+              component: () => import('@/views/system/log.vue'),
+              meta: {
+                title: '操作日志',
+                icon: 'DataBoard',
+                breadcrumb: true  // 是否显示在面包屑
+              },
+            }
+          ]
+        }
       ]
     },
 
