@@ -39,30 +39,41 @@ const filterTag = (value: string, row: User) => {
 }
 
 const tableData = ref<User[]>([])
+const total = ref(0)
+const loading = ref(false)
 // 分页设置代码
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(15) // 改成和接口一致
 const size = ref<ComponentSize>('default')
 const disabled = ref(false)
 const drawer = ref(false)
 
 const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+  getproductlist(currentPage.value, val)
   console.log(`${val} items per page`)
 }
 const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+  getproductlist(val, pageSize.value)
   console.log(`current page: ${val}`)
 }
-const getproductlist = async () => {//发送请求获取数据
+const getproductlist = async (page = 1, pageSize = 15) => {//发送请求获取数据
+  loading.value = true
   try {
-    const res = await productApi()
+    const res = await productApi({
+      page: page,
+      pageSize: pageSize
+    })
     tableData.value = res.data.list
+    total.value = res.data.total || 0
   } catch (error) {
     console.log(error);
-
   }
 }
 onMounted(() => {
-  getproductlist()
+  getproductlist(currentPage.value, pageSize.value)
 })
 //数据表单操作
 const formRef = ref<FormInstance>()
@@ -110,22 +121,22 @@ const formRules: FormRules = {
     <el-table :data="tableData" style="width: 100%">
       <!-- <el-table-column type="selection" width="55" /> -->
       <!-- @vue-generic {User} -->
-      <el-table-column property="skuCode" fixed label="skuCode" width="100" show-overflow-tooltip />
-      <el-table-column property="brandName" label="brandName" width="100"></el-table-column>
-      <el-table-column property="productName" label="productName" width="200" show-overflow-tooltip />
-      <el-table-column property="price" label="price" />
-      <el-table-column property="originalPrice" label="originalPrice" />
-      <el-table-column property="isHot" label="isHot" />
-      <el-table-column property="stock" label="stock" />
-      <el-table-column property="soldCount" label="soldCount" />
-      <el-table-column prop="tag" label="Tag" width="100" :filters="[
+      <el-table-column property="skuCode" fixed label="sku编码" width="100" show-overflow-tooltip />
+      <el-table-column property="brandName" label="品牌名" width="100"></el-table-column>
+      <el-table-column property="productName" label="产品名字" width="200" show-overflow-tooltip />
+      <el-table-column property="price" label="价格" />
+      <el-table-column property="originalPrice" label="原价" />
+      <el-table-column property="isHot" label="是否热门" />
+      <el-table-column property="stock" label="库存" />
+      <el-table-column property="soldCount" label="销售量" />
+      <el-table-column prop="tag" label="标签" width="100" :filters="[
         { text: 'Home', value: 'Home' },
         { text: 'Office', value: 'Office' },
       ]" :filter-method="filterTag" filter-placement="bottom-end">
         <template #default="scope">
           <el-tag :type="scope.row.tag === 'Home' ? 'primary' : 'success'" disable-transitions>{{
             scope.row.tag
-          }}</el-tag>
+            }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column fixed="right" label="操作" width="120">
@@ -258,8 +269,8 @@ const formRules: FormRules = {
       </div>
     </el-drawer>
     <div class="demo-pagination-block">
-      <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 30, 40]"
-        :size="size" :disabled="disabled" background layout="sizes, prev, pager, next" :total="1000"
+      <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[15, 25, 35, 45]"
+        :size="size" :disabled="disabled" background layout="sizes, prev, pager, next" :total="total"
         @size-change="handleSizeChange" @current-change="handleCurrentChange" />
     </div>
   </div>

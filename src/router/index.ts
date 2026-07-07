@@ -192,7 +192,7 @@ const router = createRouter({
       component: () =>
         import('@/components/404/index.vue')
     }
-  ]
+  ],
 })
 
 export default router
