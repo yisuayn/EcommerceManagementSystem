@@ -146,6 +146,119 @@ const router = createRouter({
             }
           ]
         },
+        // ========== 会员管理 ==========
+        {
+          path: 'member',
+          redirect: '/member/list',
+          meta: { title: '会员', icon: 'User', breadcrumb: true },
+          children: [
+            {
+              path: 'list',
+              component: () => import('@/views/member/list.vue'),
+              meta: { title: '会员列表', icon: 'User', breadcrumb: true }
+            },
+            {
+              path: 'level',
+              component: () => import('@/views/member/level.vue'),
+              meta: { title: '会员等级', icon: 'TrendCharts', breadcrumb: true }
+            },
+            {
+              path: 'points',
+              component: () => import('@/views/member/points.vue'),
+              meta: { title: '积分管理', icon: 'Coin', breadcrumb: true }
+            }
+          ]
+        },
+        // ========== 物流系统 ==========
+        {
+          path: 'logistics',
+          redirect: '/logistics/template',
+          meta: { title: '物流', icon: 'Van', breadcrumb: true },
+          children: [
+            {
+              path: 'template',
+              component: () => import('@/views/logistics/template.vue'),
+              meta: { title: '运费模板', icon: 'Document', breadcrumb: true }
+            },
+            {
+              path: 'company',
+              component: () => import('@/views/logistics/company.vue'),
+              meta: { title: '物流公司', icon: 'Truck', breadcrumb: true }
+            },
+            {
+              path: 'tracking',
+              component: () => import('@/views/logistics/tracking.vue'),
+              meta: { title: '物流追踪', icon: 'Search', breadcrumb: true }
+            }
+          ]
+        },
+        // ========== 内容管理（CMS） ==========
+        {
+          path: 'cms',
+          redirect: '/cms/banner',
+          meta: { title: '内容', icon: 'Picture', breadcrumb: true },
+          children: [
+            {
+              path: 'banner',
+              component: () => import('@/views/cms/banner.vue'),
+              meta: { title: 'Banner 管理', icon: 'Picture', breadcrumb: true }
+            },
+            {
+              path: 'article',
+              component: () => import('@/views/cms/article.vue'),
+              meta: { title: '文章管理', icon: 'Notebook', breadcrumb: true }
+            }
+          ]
+        },
+        // ========== 财务管理 ==========
+        {
+          path: 'finance',
+          redirect: '/finance/transaction',
+          meta: { title: '财务', icon: 'Money', breadcrumb: true },
+          children: [
+            {
+              path: 'transaction',
+              component: () => import('@/views/finance/transaction.vue'),
+              meta: { title: '交易流水', icon: 'List', breadcrumb: true }
+            },
+            {
+              path: 'refund',
+              component: () => import('@/views/finance/refund.vue'),
+              meta: { title: '退款管理', icon: 'Refund', breadcrumb: true }
+            }
+          ]
+        },
+        // ========== 评价管理 ==========
+        {
+          path: 'review',
+          redirect: '/review/list',
+          meta: { title: '评价', icon: 'Chat', breadcrumb: true },
+          children: [
+            {
+              path: 'list',
+              component: () => import('@/views/review/list.vue'),
+              meta: { title: '评价管理', icon: 'Chat', breadcrumb: true }
+            }
+          ]
+        },
+        // ========== 通知系统 ==========
+        {
+          path: 'notification',
+          redirect: '/notification/template',
+          meta: { title: '通知', icon: 'Bell', breadcrumb: true },
+          children: [
+            {
+              path: 'template',
+              component: () => import('@/views/notification/template.vue'),
+              meta: { title: '通知模板', icon: 'Document', breadcrumb: true }
+            },
+            {
+              path: 'log',
+              component: () => import('@/views/notification/log.vue'),
+              meta: { title: '发送记录', icon: 'List', breadcrumb: true }
+            }
+          ]
+        },
         //=============系统设置===============
         {
           path: 'system',

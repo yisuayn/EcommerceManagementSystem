@@ -73,6 +73,112 @@
         </el-menu-item>
       </el-sub-menu>
 
+      <el-sub-menu index="/member">
+        <template #title>
+          <el-icon>
+            <User />
+          </el-icon>
+          <span>会员管理</span>
+        </template>
+        <el-menu-item index="/member/list">
+          <el-icon><UserFilled /></el-icon>
+          <span>会员列表</span>
+        </el-menu-item>
+        <el-menu-item index="/member/level">
+          <el-icon><TrendCharts /></el-icon>
+          <span>会员等级</span>
+        </el-menu-item>
+        <el-menu-item index="/member/points">
+          <el-icon><Coin /></el-icon>
+          <span>积分管理</span>
+        </el-menu-item>
+      </el-sub-menu>
+
+      <el-sub-menu index="/logistics">
+        <template #title>
+          <el-icon>
+            <Box />
+          </el-icon>
+          <span>物流系统</span>
+        </template>
+        <el-menu-item index="/logistics/template">
+          <el-icon><Document /></el-icon>
+          <span>运费模板</span>
+        </el-menu-item>
+        <el-menu-item index="/logistics/company">
+          <el-icon><Box /></el-icon>
+          <span>物流公司</span>
+        </el-menu-item>
+        <el-menu-item index="/logistics/tracking">
+          <el-icon><Search /></el-icon>
+          <span>物流追踪</span>
+        </el-menu-item>
+      </el-sub-menu>
+
+      <el-sub-menu index="/cms">
+        <template #title>
+          <el-icon>
+            <PictureFilled />
+          </el-icon>
+          <span>内容管理</span>
+        </template>
+        <el-menu-item index="/cms/banner">
+          <el-icon><PictureFilled /></el-icon>
+          <span>Banner 管理</span>
+        </el-menu-item>
+        <el-menu-item index="/cms/article">
+          <el-icon><Notebook /></el-icon>
+          <span>文章管理</span>
+        </el-menu-item>
+      </el-sub-menu>
+
+      <el-sub-menu index="/finance">
+        <template #title>
+          <el-icon>
+            <Money />
+          </el-icon>
+          <span>财务管理</span>
+        </template>
+        <el-menu-item index="/finance/transaction">
+          <el-icon><List /></el-icon>
+          <span>交易流水</span>
+        </el-menu-item>
+        <el-menu-item index="/finance/refund">
+          <el-icon><CircleCheck /></el-icon>
+          <span>退款管理</span>
+        </el-menu-item>
+      </el-sub-menu>
+
+      <el-sub-menu index="/review">
+        <template #title>
+          <el-icon>
+            <ChatDotRound />
+          </el-icon>
+          <span>评价管理</span>
+        </template>
+        <el-menu-item index="/review/list">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>评价列表</span>
+        </el-menu-item>
+      </el-sub-menu>
+
+      <el-sub-menu index="/notification">
+        <template #title>
+          <el-icon>
+            <Bell />
+          </el-icon>
+          <span>通知系统</span>
+        </template>
+        <el-menu-item index="/notification/template">
+          <el-icon><Document /></el-icon>
+          <span>通知模板</span>
+        </el-menu-item>
+        <el-menu-item index="/notification/log">
+          <el-icon><List /></el-icon>
+          <span>发送记录</span>
+        </el-menu-item>
+      </el-sub-menu>
+
       <el-sub-menu index="marketing">
         <template #title>
           <el-icon>
@@ -138,7 +244,8 @@ import { useRoute } from 'vue-router'
 import "./sidebar.scss"
 import {
   DataBoard, ShoppingCart, Goods, Shop, Present, Ticket, Timer, Monitor, DataAnalysis,
-  Setting, UserFilled, Avatar, Document, Expand
+  Setting, UserFilled, Avatar, Document, Expand, User, TrendCharts, Coin, Search,
+  PictureFilled, Notebook, Money, List, ChatDotRound, Bell, Box, CircleCheck
 } from '@element-plus/icons-vue'
 
 defineProps<{

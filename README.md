@@ -127,7 +127,7 @@ EcommerceManagementSystem/
     │   └── 404/
     │       └── index.vue              # 404 页面
     │
-    └── views/
+        └── views/
         ├── login/
         │   ├── Login.vue              # 登录页（邮箱+密码 / 第三方登录占位）
         │   └── Register.vue           # 注册页（完整表单验证）
@@ -143,14 +143,34 @@ EcommerceManagementSystem/
         │   ├── aftersales.vue          # 售后管理（审核/退货/退款/凭证）
         │   └── abnormal.vue            # 异常监控（分类/趋势/处理）
         │
-        ├── marketing/
-        │   ├── coupon.vue              # 优惠券管理（新建/发放/统计）
-        │   └── seckill.vue             # 秒杀活动（时间轴/场次/商品管理）
+        ├── member/          # ✅ 新增 - 会员管理
+        │   ├── list.vue                # 会员列表（搜索/筛选/编辑抽屉/状态开关）
+        │   ├── level.vue               # 会员等级（等级卡片/权益配置/折扣率）
+        │   └── points.vue              # 积分管理（规则配置/积分流水查询）
         │
-        └── system/
-            ├── user.vue                # 管理员管理（CRUD / 角色分配 / 状态）
-            ├── role.vue                # 角色权限管理（el-tree 权限树）
-            └── log.vue                 # 操作日志（筛选/详情/JSON 展示）
+        ├── logistics/       # ✅ 新增 - 物流系统
+        │   ├── template.vue            # 运费模板（按件/按重量/包邮门槛/地区）
+        │   ├── company.vue             # 物流公司（顺丰/中通等配置管理）
+        │   └── tracking.vue            # 物流追踪（运单查询/时间线/状态）
+        │
+        ├── cms/             # ✅ 新增 - 内容管理
+        │   ├── banner.vue              # Banner 管理（轮播图/有效期/排序）
+        │   └── article.vue             # 文章管理（公告/资讯/活动发布）
+        │
+        ├── finance/         # ✅ 新增 - 财务管理
+        │   ├── transaction.vue         # 交易流水（资金明细/支付方式/状态）
+        │   └── refund.vue              # 退款管理（退款审核/流程/统计）
+        │
+        ├── review/          # ✅ 新增 - 评价管理
+        │   └── list.vue                # 评价列表（评分/审核/回复/屏蔽）
+        │
+        ├── notification/    # ✅ 新增 - 通知系统
+        │   ├── template.vue            # 通知模板（短信/邮件/站内信配置）
+        │   └── log.vue                 # 发送记录（发送状态/失败原因/详情）
+        │
+        └── marketing/
+            ├── coupon.vue              # 优惠券管理（新建/发放/统计）
+            └── seckill.vue             # 秒杀活动（时间轴/场次/商品管理）
 ```
 
 ---
@@ -184,7 +204,15 @@ EcommerceManagementSystem/
 | **库存管理** | 概览卡片 + 入库/出库/盘点/变动记录；低库存/缺货高亮提示 |
 | **数据报表** | 日期范围筛选 + 5 类图表（销售趋势/销量排行/分类占比/用户来源/订单状态）+ 销售明细表 |
 
-### 4. 📋 订单管理
+### 4. 🧑 会员管理（新增）
+
+| 功能 | 说明 |
+|------|------|
+| **会员列表** | 表格展示：昵称/手机号/等级/积分/余额/订单数/累计消费；搜索筛选/状态开关/编辑 |
+| **会员等级** | 等级卡片展示（普通/银卡/金卡/钻石），配置升级所需积分、折扣率、权益描述 |
+| **积分管理** | Tab 切换：积分获取规则配置（注册/签到/消费/评价等比例）+ 积分变动流水查询 |
+
+### 5. 📋 订单管理
 
 | 功能 | 说明 |
 |------|------|
@@ -195,14 +223,49 @@ EcommerceManagementSystem/
 | **售后详情** | 进度步骤条 + 凭证图片 + 退货物流 + 审核意见 + 操作记录时间轴 |
 | **异常监控** | 异常类型（订单/支付/库存/系统/物流）+ 级别（严重/警告/提示）+ 趋势图表 + 处理流程 |
 
-### 5. 🎯 营销中心
+### 6. 🚚 物流系统（新增）
+
+| 功能 | 说明 |
+|------|------|
+| **运费模板** | 按件/按重量计价，地区运费差异化（全国/偏远地区），满额包邮规则 |
+| **物流公司** | 物流公司启用/停用，编码、联系电话、追踪 URL 模板配置 |
+| **物流追踪** | 运单号查询，展示物流公司及完整时间线，支持异常状态提示 |
+
+### 7. 📰 内容管理 CMS（新增）
+
+| 功能 | 说明 |
+|------|------|
+| **Banner 管理** | 首页轮播图：图片上传/预览、标题副标题、跳转链接、排序、上架/下架、有效期 |
+| **文章管理** | 资讯/公告发布：标题、分类、封面、作者、内容编辑、发布/草稿状态 |
+
+### 8. 💰 财务管理（新增）
+
+| 功能 | 说明 |
+|------|------|
+| **交易流水** | 统计卡片（今日/本月交易额及笔数）+ 搜索筛选 + 交易明细表（金额/支付方式/类型/状态） |
+| **退款管理** | 退款申请统计 + 审核流程（待审核→通过/拒绝→确认退款）+ 退款原因及金额明细 |
+
+### 9. ⭐ 评价系统（新增）
+
+| 功能 | 说明 |
+|------|------|
+| **评价管理** | 商品评价展示（评分/内容/图片），审核（通过/屏蔽），商家回复，统计卡片 |
+
+### 10. 🔔 通知系统（新增）
+
+| 功能 | 说明 |
+|------|------|
+| **通知模板** | 短信/邮件/站内信模板管理，支持变量占位符（{nickname}/{orderNo}等） |
+| **发送记录** | 发送日志查询：收件人、类型、状态（成功/失败）、失败原因、发送时间 |
+
+### 11. 🎯 营销中心
 
 | 功能 | 说明 |
 |------|------|
 | **优惠券管理** | 满减券/折扣券/现金券/运费券；新建/编辑/发放/禁用；统计总数/进行中/今日发放/今日使用 |
 | **秒杀活动** | 6 个场次时间轴（00:00~24:00）；秒杀商品卡片（倒计时/进度条）；活动 CRUD |
 
-### 6. ⚙️ 系统设置
+### 12. ⚙️ 系统设置
 
 | 功能 | 说明 |
 |------|------|
@@ -227,6 +290,19 @@ EcommerceManagementSystem/
 | `/product/datareport` | `product/Datareport.vue` | 数据报表 | ✅ |
 | `/product/inventory` | `product/Inventory.vue` | 库存管理 | ✅ |
 | `/product/launch` | `product/productlaunch.vue` | 商品发布 | ✅ |
+| `/member/list` | `member/list.vue` | 会员列表 | ✅ |
+| `/member/level` | `member/level.vue` | 会员等级 | ✅ |
+| `/member/points` | `member/points.vue` | 积分管理 | ✅ |
+| `/logistics/template` | `logistics/template.vue` | 运费模板 | ✅ |
+| `/logistics/company` | `logistics/company.vue` | 物流公司 | ✅ |
+| `/logistics/tracking` | `logistics/tracking.vue` | 物流追踪 | ✅ |
+| `/cms/banner` | `cms/banner.vue` | Banner 管理 | ✅ |
+| `/cms/article` | `cms/article.vue` | 文章管理 | ✅ |
+| `/finance/transaction` | `finance/transaction.vue` | 交易流水 | ✅ |
+| `/finance/refund` | `finance/refund.vue` | 退款管理 | ✅ |
+| `/review/list` | `review/list.vue` | 评价管理 | ✅ |
+| `/notification/template` | `notification/template.vue` | 通知模板 | ✅ |
+| `/notification/log` | `notification/log.vue` | 发送记录 | ✅ |
 | `/marketing/coupon` | `marketing/coupon.vue` | 优惠券管理 | ✅ |
 | `/marketing/seckill` | `marketing/seckill.vue` | 秒杀活动 | ✅ |
 | `/system/admin` | `system/user.vue` | 管理员管理 | ✅ |
