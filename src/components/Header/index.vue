@@ -10,7 +10,7 @@
             <circle cx="24" cy="24" r="4" fill="#fff" fill-opacity="0.8" />
           </svg>
         </div>
-        <span class="header-logo-text">电商后台管理系统</span>
+        <span class="header-logo-text">后台管理系统</span>
       </div>
     </div>
 

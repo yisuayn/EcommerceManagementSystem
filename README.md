@@ -23,12 +23,13 @@
 - [API 接口](#api-接口)
 - [权限体系](#权限体系)
 - [环境变量](#环境变量)
+- [浏览器支持](#浏览器支持)
 
 ---
 
 ## 项目简介
 
-本项目是一个功能完善的电商后台管理系统前端应用，覆盖电商运营的六大核心模块。系统采用现代化的前端技术栈，提供了丰富的交互体验与数据可视化能力，目前处于前端开发阶段，组件和数据展示已完善，待对接后端 API 即可投入生产使用。
+本项目是一个功能完善的电商后台管理系统前端应用，覆盖电商运营的十二大核心模块（含会员管理、物流系统、CMS 内容管理、财务管理、评价系统、通知系统等新增模块）。系统采用现代化的前端技术栈，提供了丰富的交互体验与数据可视化能力，目前处于前端开发阶段，所有页面均使用模拟数据展示，待对接后端 API 即可投入生产使用。
 
 ### 主要特性
 
@@ -102,7 +103,13 @@ EcommerceManagementSystem/
     ├── api/
     │   ├── auth.ts                    # 认证 API（登录/注册/用户信息/退出）
     │   ├── dashboard.ts              # 看板数据 API
-    │   └── product.ts                # 商品相关 API
+    │   ├── product.ts                # 商品相关 API
+    │   ├── member.ts                 # 会员管理 API
+    │   ├── logistics.ts              # 物流系统 API
+    │   ├── cms.ts                    # 内容管理 API
+    │   ├── finance.ts                # 财务管理 API
+    │   ├── review.ts                 # 评价系统 API
+    │   └── notification.ts           # 通知系统 API
     │
     ├── utils/
     │   ├── request.ts                 # Axios 封装（拦截器 / Token 注入 / 错误处理）
@@ -127,7 +134,7 @@ EcommerceManagementSystem/
     │   └── 404/
     │       └── index.vue              # 404 页面
     │
-        └── views/
+    └── views/
         ├── login/
         │   ├── Login.vue              # 登录页（邮箱+密码 / 第三方登录占位）
         │   └── Register.vue           # 注册页（完整表单验证）
@@ -143,34 +150,39 @@ EcommerceManagementSystem/
         │   ├── aftersales.vue          # 售后管理（审核/退货/退款/凭证）
         │   └── abnormal.vue            # 异常监控（分类/趋势/处理）
         │
-        ├── member/          # ✅ 新增 - 会员管理
+        ├── member/                     # 会员管理
         │   ├── list.vue                # 会员列表（搜索/筛选/编辑抽屉/状态开关）
         │   ├── level.vue               # 会员等级（等级卡片/权益配置/折扣率）
         │   └── points.vue              # 积分管理（规则配置/积分流水查询）
         │
-        ├── logistics/       # ✅ 新增 - 物流系统
+        ├── logistics/                  # 物流系统
         │   ├── template.vue            # 运费模板（按件/按重量/包邮门槛/地区）
         │   ├── company.vue             # 物流公司（顺丰/中通等配置管理）
         │   └── tracking.vue            # 物流追踪（运单查询/时间线/状态）
         │
-        ├── cms/             # ✅ 新增 - 内容管理
+        ├── cms/                        # 内容管理
         │   ├── banner.vue              # Banner 管理（轮播图/有效期/排序）
         │   └── article.vue             # 文章管理（公告/资讯/活动发布）
         │
-        ├── finance/         # ✅ 新增 - 财务管理
+        ├── finance/                    # 财务管理
         │   ├── transaction.vue         # 交易流水（资金明细/支付方式/状态）
         │   └── refund.vue              # 退款管理（退款审核/流程/统计）
         │
-        ├── review/          # ✅ 新增 - 评价管理
+        ├── review/                     # 评价管理
         │   └── list.vue                # 评价列表（评分/审核/回复/屏蔽）
         │
-        ├── notification/    # ✅ 新增 - 通知系统
+        ├── notification/               # 通知系统
         │   ├── template.vue            # 通知模板（短信/邮件/站内信配置）
         │   └── log.vue                 # 发送记录（发送状态/失败原因/详情）
         │
-        └── marketing/
-            ├── coupon.vue              # 优惠券管理（新建/发放/统计）
-            └── seckill.vue             # 秒杀活动（时间轴/场次/商品管理）
+        ├── marketing/
+        │   ├── coupon.vue              # 优惠券管理（新建/发放/统计）
+        │   └── seckill.vue             # 秒杀活动（时间轴/场次/商品管理）
+        │
+        └── system/
+            ├── user.vue                # 管理员管理（CRUD / 角色分配 / 状态）
+            ├── role.vue                # 角色权限管理（el-tree 权限树）
+            └── log.vue                 # 操作日志（筛选/详情/JSON 展示）
 ```
 
 ---
@@ -433,6 +445,12 @@ location / {
 | `api/auth.ts` | `logout` | `/logout` | POST | 退出登录 |
 | `api/dashboard.ts` | `dashboardApi` | `/getsaledata` | GET | 获取看板数据 |
 | `api/product.ts` | `productApi` | `/admin/list` | GET | 获取商品列表 |
+| `api/member.ts` | 5 个函数 | `/member/*` | GET/POST | 会员管理全量接口 |
+| `api/logistics.ts` | 5 个函数 | `/logistics/*` | GET/POST/DELETE | 物流系统全量接口 |
+| `api/cms.ts` | 6 个函数 | `/cms/*` | GET/POST/DELETE | 内容管理全量接口 |
+| `api/finance.ts` | 3 个函数 | `/finance/*` | GET/POST | 财务管理全量接口 |
+| `api/review.ts` | 4 个函数 | `/review/*` | GET/POST/DELETE | 评价系统全量接口 |
+| `api/notification.ts` | 4 个函数 | `/notification/*` | GET/POST | 通知系统全量接口 |
 
 ---
 
@@ -447,6 +465,12 @@ location / {
 | 数据看板 | 查看、导出 |
 | 商品管理 | 列表查看、商品发布、库存管理、分类管理 |
 | 订单管理 | 列表查看、订单处理、售后管理、物流管理 |
+| 会员管理 | 会员列表、等级管理、积分管理 |
+| 物流系统 | 运费模板、物流公司、物流追踪 |
+| 内容管理 CMS | Banner管理、文章管理 |
+| 财务管理 | 交易流水、退款管理 |
+| 评价系统 | 评价管理 |
+| 通知系统 | 通知模板、发送记录 |
 | 营销中心 | 优惠券管理、秒杀活动、促销管理 |
 | 系统设置 | 管理员管理、角色管理、日志查看 |
 
