@@ -3,6 +3,7 @@ import { onMounted, ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshLeft, Plus, Edit, Delete, InfoFilled } from '@element-plus/icons-vue'
+import { getTemplateList, saveTemplate } from '@/api/notification'
 
 interface NotificationTemplate {
   id: number
@@ -16,6 +17,9 @@ interface NotificationTemplate {
 const formRef = ref<FormInstance>()
 const tableData = ref<NotificationTemplate[]>([])
 const loading = ref(false)
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -47,64 +51,22 @@ const typeOptions = [
   { label: '站内信', value: 'internal' }
 ]
 
-const mockTemplates: NotificationTemplate[] = [
-  {
-    id: 1, name: '订单支付通知-短信', type: 'sms',
-    templateCode: 'ORDER_PAID_SMS',
-    content: '尊敬的{nickname}，您的订单{orderNo}已支付成功，金额{amount}元，感谢您的购买！',
-    status: true
-  },
-  {
-    id: 2, name: '订单支付通知-邮件', type: 'email',
-    templateCode: 'ORDER_PAID_EMAIL',
-    content: '尊敬的{nickname}，您好！您的订单{orderNo}已于{time}支付成功，支付金额{amount}元。订单详情请登录查看。',
-    status: true
-  },
-  {
-    id: 3, name: '注册欢迎-站内信', type: 'internal',
-    templateCode: 'REG_WELCOME',
-    content: '欢迎{nickname}注册成为我们的会员！送您一张新人优惠券，祝您购物愉快！',
-    status: true
-  },
-  {
-    id: 4, name: '发货通知-短信', type: 'sms',
-    templateCode: 'ORDER_SHIPPED',
-    content: '您的订单{orderNo}已发货，请注意查收。如有问题请联系客服。',
-    status: true
-  },
-  {
-    id: 5, name: '退款通知-短信', type: 'sms',
-    templateCode: 'REFUND_NOTIFY',
-    content: '尊敬的{nickname}，您的退款申请已处理，订单{orderNo}退款金额{amount}元，预计{time}到账。',
-    status: false
-  },
-  {
-    id: 6, name: '促销活动-邮件', type: 'email',
-    templateCode: 'PROMO_ACTIVITY',
-    content: '亲爱的{nickname}，商城大促来袭！全场满减优惠，点击查看详情。活动截止时间：{time}。',
-    status: true
-  },
-  {
-    id: 7, name: '密码重置-邮件', type: 'email',
-    templateCode: 'PASSWORD_RESET',
-    content: '您好，您正在重置密码，验证码已发送。如非本人操作，请忽略此邮件。',
-    status: true
-  },
-  {
-    id: 8, name: '会员升级-站内信', type: 'internal',
-    templateCode: 'MEMBER_UPGRADE',
-    content: '恭喜{nickname}升级为高级会员！即日起享受更多专属权益和优惠折扣。',
-    status: false
-  }
-]
-
-const loadData = () => {
+const loadData = async () => {
   loading.value = true
-  setTimeout(() => {
-    let filtered = [...mockTemplates]
-    tableData.value = filtered
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    const res = await getTemplateList(params)
+    const data = res.data || res
+    tableData.value = data.list || []
+    total.value = data.total || 0
+  } catch {
+    ElMessage.error('获取模板列表失败')
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const openAdd = () => {
@@ -131,23 +93,21 @@ const handleSave = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  if (isEdit.value && currentRow.value) {
-    Object.assign(currentRow.value, { ...formData })
-    ElMessage.success('编辑成功')
-  } else {
-    const newId = Math.max(...mockTemplates.map(t => t.id)) + 1
-    mockTemplates.push({
-      id: newId,
+  try {
+    await saveTemplate({
+      id: isEdit.value ? currentRow.value?.id : undefined,
       name: formData.name,
       type: formData.type,
       templateCode: formData.templateCode,
       content: formData.content,
       status: formData.status
     })
-    ElMessage.success('新增成功')
+    ElMessage.success(isEdit.value ? '编辑成功' : '新增成功')
+    dialogVisible.value = false
+    loadData()
+  } catch {
+    ElMessage.error('保存模板失败')
   }
-  dialogVisible.value = false
-  loadData()
 }
 
 const handleDelete = (row: NotificationTemplate) => {
@@ -155,19 +115,29 @@ const handleDelete = (row: NotificationTemplate) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const idx = mockTemplates.findIndex(t => t.id === row.id)
-    if (idx > -1) {
-      mockTemplates.splice(idx, 1)
+  }).then(async () => {
+    try {
+      await saveTemplate({ id: row.id, deleted: true })
+      ElMessage.success('删除成功')
       loadData()
+    } catch {
+      ElMessage.error('删除模板失败')
     }
-    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
-const handleToggleStatus = (row: NotificationTemplate) => {
-  row.status = !row.status
-  ElMessage.success(row.status ? '已启用' : '已禁用')
+const handleToggleStatus = async (row: NotificationTemplate) => {
+  try {
+    await saveTemplate({
+      id: row.id,
+      status: !row.status
+    })
+    row.status = !row.status
+    ElMessage.success(row.status ? '已启用' : '已禁用')
+    loadData()
+  } catch {
+    ElMessage.error('操作失败')
+  }
 }
 
 const handlePreview = (row: NotificationTemplate) => {
@@ -232,6 +202,18 @@ onMounted(() => loadData())
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="currentPage = 1; loadData()"
+          @current-change="loadData"
+        />
+      </div>
     </el-card>
 
     <!-- 新增/编辑对话框 -->
@@ -304,6 +286,12 @@ onMounted(() => loadData())
   }
 
   .table-card { border-radius: 8px; }
+
+  .pagination-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+  }
 
   .code-value {
     background: #f5f7fa;

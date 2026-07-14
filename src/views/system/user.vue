@@ -219,6 +219,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search, RefreshLeft } from '@element-plus/icons-vue'
+import { getAdminList, saveAdmin, resetAdminPassword, getRoleList } from '@/api/system'
 
 // 角色列表
 const roleList = ref([
@@ -230,53 +231,7 @@ const roleList = ref([
 ])
 
 // 管理员列表
-const adminList = ref([
-  {
-    id: 1,
-    username: 'admin',
-    nickname: '超级管理员',
-    avatar: 'https://picsum.photos/80/80?random=1',
-    email: 'admin@example.com',
-    phone: '13800138001',
-    roleId: 1,
-    roleName: '超级管理员',
-    status: 1,
-    lastLoginTime: '2024-06-13 10:30:00',
-    lastLoginIp: '192.168.1.1',
-    createTime: '2024-01-01 00:00:00',
-    remark: '系统超级管理员'
-  },
-  {
-    id: 2,
-    username: 'product_admin',
-    nickname: '商品管理员',
-    avatar: 'https://picsum.photos/80/80?random=2',
-    email: 'product@example.com',
-    phone: '13800138002',
-    roleId: 2,
-    roleName: '商品管理员',
-    status: 1,
-    lastLoginTime: '2024-06-13 09:15:00',
-    lastLoginIp: '192.168.1.2',
-    createTime: '2024-01-15 10:00:00',
-    remark: '负责商品管理'
-  },
-  {
-    id: 3,
-    username: 'order_admin',
-    nickname: '订单管理员',
-    avatar: 'https://picsum.photos/80/80?random=3',
-    email: 'order@example.com',
-    phone: '13800138003',
-    roleId: 3,
-    roleName: '订单管理员',
-    status: 0,
-    lastLoginTime: '2024-06-12 14:20:00',
-    lastLoginIp: '192.168.1.3',
-    createTime: '2024-02-01 09:00:00',
-    remark: '负责订单处理'
-  }
-])
+const adminList = ref<any[]>([])
 
 // 搜索表单
 const searchForm = reactive({
@@ -386,11 +341,25 @@ const refreshList = () => {
   loadAdminList()
 }
 
-const loadAdminList = () => {
+const loadAdminList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      username: searchForm.username || undefined,
+      nickname: searchForm.nickname || undefined,
+      roleId: searchForm.roleId || undefined,
+      status: searchForm.status !== '' ? searchForm.status : undefined
+    }
+    const res = await getAdminList(params)
+    adminList.value = res.data.list || []
+    total.value = res.data.total || 0
+  } catch {
+    ElMessage.error('获取管理员列表失败')
+  } finally {
     tableLoading.value = false
-  }, 500)
+  }
 }
 
 const handleSelectionChange = (val: any[]) => {
@@ -457,8 +426,16 @@ const resetPassword = (row: any) => {
 
 const submitResetPassword = async () => {
   await passwordFormRef.value?.validate()
-  ElMessage.success(`密码重置成功，新密码已发送至 ${currentResetAdmin.value.email}`)
-  passwordDialogVisible.value = false
+  try {
+    await resetAdminPassword({
+      id: currentResetAdmin.value.id,
+      password: passwordForm.password
+    })
+    ElMessage.success(`密码重置成功，新密码已发送至 ${currentResetAdmin.value.email}`)
+    passwordDialogVisible.value = false
+  } catch {
+    ElMessage.error('密码重置失败')
+  }
 }
 
 // 删除管理员
@@ -476,9 +453,24 @@ const deleteAdmin = (row: any) => {
 // 提交表单
 const submitForm = async () => {
   await formRef.value?.validate()
-  ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
-  dialogVisible.value = false
-  loadAdminList()
+  try {
+    await saveAdmin({
+      id: adminForm.id || undefined,
+      username: adminForm.username,
+      password: adminForm.password || undefined,
+      nickname: adminForm.nickname,
+      email: adminForm.email,
+      phone: adminForm.phone,
+      roleId: adminForm.roleId,
+      status: adminForm.status,
+      remark: adminForm.remark
+    })
+    ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
+    dialogVisible.value = false
+    loadAdminList()
+  } catch {
+    ElMessage.error(dialogType.value === 'create' ? '创建失败' : '更新失败')
+  }
 }
 
 const closeDialog = () => {
@@ -486,8 +478,19 @@ const closeDialog = () => {
 }
 
 onMounted(() => {
+  loadRoleList()
   loadAdminList()
 })
+
+// 加载角色列表
+const loadRoleList = async () => {
+  try {
+    const res = await getRoleList({})
+    roleList.value = res.data.list || []
+  } catch {
+    // 使用默认角色列表
+  }
+}
 </script>
 
 <style scoped lang="scss">

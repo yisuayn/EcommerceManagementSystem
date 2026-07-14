@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, reactive, computed } from 'vue'
+import { onMounted, ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshLeft, Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { getMemberList, saveMember } from '@/api/member'
 
 interface Member {
   id: string
@@ -52,38 +53,21 @@ const formRules: FormRules = {
 
 const levelOptions = ['普通会员', '银卡会员', '金卡会员', '钻石会员']
 
-const mockData = Array.from({ length: 86 }, (_, i) => ({
-  id: `M${String(i + 1).padStart(5, '0')}`,
-  avatar: '',
-  nickname: (['张三', '李四', '王五', '赵六', '孙七', '周八', '吴九', '郑十'][i % 8]) || '',
-  phone: `138${String(10000000 + i).slice(0, 8)}`,
-  email: `user${i + 1}@example.com`,
-  level: (levelOptions[i % 4]) || '普通会员',
-  points: Math.floor(Math.random() * 5000),
-  balance: Math.round(Math.random() * 10000 * 100) / 100,
-  totalOrders: Math.floor(Math.random() * 50),
-  totalAmount: Math.round(Math.random() * 50000 * 100) / 100,
-  lastLogin: `2026-07-${String(1 + Math.floor(Math.random() * 7)).padStart(2, '0')} ${String(8 + Math.floor(Math.random() * 10)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
-  createTime: `2026-0${1 + Math.floor(Math.random() * 6)}-${String(1 + Math.floor(Math.random() * 28)).padStart(2, '0')}`,
-  status: Math.random() > 0.15 ? 1 : 0
-}))
-
-const loadData = () => {
+const loadData = async () => {
   loading.value = true
-  setTimeout(() => {
-    let filtered = [...mockData]
-    if (searchForm.keyword) {
-      filtered = filtered.filter(m =>
-        m.nickname.includes(searchForm.keyword) || m.phone.includes(searchForm.keyword)
-      )
-    }
-    if (searchForm.level) filtered = filtered.filter(m => m.level === searchForm.level)
-    if (searchForm.status !== '') filtered = filtered.filter(m => String(m.status) === searchForm.status)
-    total.value = filtered.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = filtered.slice(start, start + pageSize.value)
+  try {
+    const params: any = { page: currentPage.value, pageSize: pageSize.value }
+    if (searchForm.keyword) params.keyword = searchForm.keyword
+    if (searchForm.level) params.level = searchForm.level
+    if (searchForm.status !== '') params.status = searchForm.status
+    const res = await getMemberList(params)
+    tableData.value = res.data.list || res.data.records || []
+    total.value = res.data.total || 0
+  } catch (e) {
+    console.log(e)
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const handleSearch = () => { currentPage.value = 1; loadData() }
@@ -104,10 +88,15 @@ const handleEdit = (row: Member) => {
   drawer.value = true
 }
 
-const handleSave = () => {
-  ElMessage.success(currentRow.value ? '编辑成功' : '新增成功')
-  drawer.value = false
-  loadData()
+const handleSave = async () => {
+  try {
+    await saveMember(formData)
+    ElMessage.success(currentRow.value ? '编辑成功' : '新增成功')
+    drawer.value = false
+    loadData()
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 const handleToggleStatus = (row: Member) => {

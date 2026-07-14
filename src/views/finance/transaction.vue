@@ -116,7 +116,7 @@
 
     <!-- 交易列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table :data="filteredList" border stripe v-loading="tableLoading">
+      <el-table :data="tableData" border stripe v-loading="tableLoading">
         <el-table-column prop="transactionId" label="交易编号" width="180" />
         <el-table-column prop="orderNo" label="订单号" width="180" />
         <el-table-column prop="member" label="会员" width="100" align="center" />
@@ -165,9 +165,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download, Refresh, Search, RefreshLeft, Money, Document, Coin, List } from '@element-plus/icons-vue'
+import { getTransactionList } from '@/api/finance'
 
 interface TransactionItem {
   transactionId: string
@@ -185,11 +186,13 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
+const tableData = ref<TransactionItem[]>([])
+
 const stats = reactive({
-  todayAmount: 156890,
-  todayCount: 2345,
-  monthAmount: 3256780,
-  monthCount: 45678
+  todayAmount: 0,
+  todayCount: 0,
+  monthAmount: 0,
+  monthCount: 0
 })
 
 const searchForm = reactive({
@@ -199,47 +202,36 @@ const searchForm = reactive({
   dateRange: null as [Date, Date] | null
 })
 
-const allTransactions = ref<TransactionItem[]>([
-  { transactionId: 'TX20250701001', orderNo: 'ORD20250701001', member: '张三', amount: 5999, paymentMethod: 'wechat', transactionType: 'payment', status: 'success', transactionTime: '2025-07-01 10:15:23' },
-  { transactionId: 'TX20250701002', orderNo: 'ORD20250701002', member: '李四', amount: 128, paymentMethod: 'alipay', transactionType: 'payment', status: 'success', transactionTime: '2025-07-01 10:32:45' },
-  { transactionId: 'TX20250701003', orderNo: 'ORD20250701003', member: '王五', amount: -599, paymentMethod: 'wechat', transactionType: 'refund', status: 'success', transactionTime: '2025-07-01 11:05:12' },
-  { transactionId: 'TX20250701004', orderNo: 'ORD20250701004', member: '赵六', amount: 2999, paymentMethod: 'bank', transactionType: 'payment', status: 'processing', transactionTime: '2025-07-01 11:28:36' },
-  { transactionId: 'TX20250701005', orderNo: 'ORD20250701005', member: '孙七', amount: 4500, paymentMethod: 'alipay', transactionType: 'payment', status: 'success', transactionTime: '2025-07-01 12:00:01' },
-  { transactionId: 'TX20250701006', orderNo: 'ORD20250701006', member: '周八', amount: 88, paymentMethod: 'wechat', transactionType: 'payment', status: 'success', transactionTime: '2025-07-01 13:15:44' },
-  { transactionId: 'TX20250701007', orderNo: 'ORD20250701007', member: '吴九', amount: -1200, paymentMethod: 'alipay', transactionType: 'refund', status: 'success', transactionTime: '2025-07-01 14:22:18' },
-  { transactionId: 'TX20250701008', orderNo: 'ORD20250701008', member: '郑十', amount: 239, paymentMethod: 'wechat', transactionType: 'payment', status: 'fail', transactionTime: '2025-07-01 14:55:30' },
-  { transactionId: 'TX20250702001', orderNo: 'ORD20250702001', member: '张三', amount: 1899, paymentMethod: 'alipay', transactionType: 'payment', status: 'success', transactionTime: '2025-07-02 09:10:15' },
-  { transactionId: 'TX20250702002', orderNo: 'ORD20250702002', member: '李四', amount: 350, paymentMethod: 'wechat', transactionType: 'payment', status: 'success', transactionTime: '2025-07-02 10:42:08' },
-  { transactionId: 'TX20250702003', orderNo: 'ORD20250702003', member: '王五', amount: 7800, paymentMethod: 'bank', transactionType: 'payment', status: 'success', transactionTime: '2025-07-02 11:30:00' },
-  { transactionId: 'TX20250702004', orderNo: 'ORD20250702004', member: '赵六', amount: -230, paymentMethod: 'wechat', transactionType: 'refund', status: 'processing', transactionTime: '2025-07-02 13:18:22' },
-  { transactionId: 'TX20250702005', orderNo: 'ORD20250702005', member: '孙七', amount: 50000, paymentMethod: 'bank', transactionType: 'withdraw', status: 'processing', transactionTime: '2025-07-02 14:00:00' },
-  { transactionId: 'TX20250703001', orderNo: 'ORD20250703001', member: '周八', amount: 159, paymentMethod: 'alipay', transactionType: 'payment', status: 'success', transactionTime: '2025-07-03 08:25:33' },
-  { transactionId: 'TX20250703002', orderNo: 'ORD20250703002', member: '吴九', amount: 2699, paymentMethod: 'wechat', transactionType: 'payment', status: 'fail', transactionTime: '2025-07-03 09:15:47' },
-  { transactionId: 'TX20250703003', orderNo: 'ORD20250703003', member: '郑十', amount: -159, paymentMethod: 'alipay', transactionType: 'refund', status: 'success', transactionTime: '2025-07-03 10:30:11' },
-  { transactionId: 'TX20250703004', orderNo: 'ORD20250703004', member: '张三', amount: 200000, paymentMethod: 'bank', transactionType: 'withdraw', status: 'success', transactionTime: '2025-07-03 11:00:00' },
-  { transactionId: 'TX20250703005', orderNo: 'ORD20250703005', member: '李四', amount: 89.9, paymentMethod: 'wechat', transactionType: 'payment', status: 'success', transactionTime: '2025-07-03 15:42:19' },
-  { transactionId: 'TX20250704001', orderNo: 'ORD20250704001', member: '王五', amount: 3299, paymentMethod: 'alipay', transactionType: 'payment', status: 'success', transactionTime: '2025-07-04 10:05:07' },
-  { transactionId: 'TX20250704002', orderNo: 'ORD20250704002', member: '赵六', amount: 45, paymentMethod: 'wechat', transactionType: 'payment', status: 'success', transactionTime: '2025-07-04 11:22:55' },
-  { transactionId: 'TX20250704003', orderNo: 'ORD20250704003', member: '孙七', amount: -3299, paymentMethod: 'alipay', transactionType: 'refund', status: 'fail', transactionTime: '2025-07-04 14:10:38' },
-  { transactionId: 'TX20250704004', orderNo: 'ORD20250704004', member: '周八', amount: 1000, paymentMethod: 'bank', transactionType: 'withdraw', status: 'success', transactionTime: '2025-07-04 16:30:00' },
-  { transactionId: 'TX20250705001', orderNo: 'ORD20250705001', member: '吴九', amount: 560, paymentMethod: 'wechat', transactionType: 'payment', status: 'success', transactionTime: '2025-07-05 09:00:12' }
-])
-
-const filteredList = computed(() => {
-  let list = allTransactions.value
-  if (searchForm.orderNo) {
-    list = list.filter(item => item.orderNo.includes(searchForm.orderNo))
+const fetchData = async () => {
+  tableLoading.value = true
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchForm.orderNo) params.orderNo = searchForm.orderNo
+    if (searchForm.paymentMethod) params.paymentMethod = searchForm.paymentMethod
+    if (searchForm.transactionType) params.transactionType = searchForm.transactionType
+    if (searchForm.dateRange) {
+      params.startTime = searchForm.dateRange[0]
+      params.endTime = searchForm.dateRange[1]
+    }
+    const res = await getTransactionList(params)
+    const data = res.data || res
+    tableData.value = data.list || []
+    total.value = data.total || 0
+    if (data.stats) {
+      stats.todayAmount = data.stats.todayAmount || 0
+      stats.todayCount = data.stats.todayCount || 0
+      stats.monthAmount = data.stats.monthAmount || 0
+      stats.monthCount = data.stats.monthCount || 0
+    }
+  } catch {
+    ElMessage.error('获取交易列表失败')
+  } finally {
+    tableLoading.value = false
   }
-  if (searchForm.paymentMethod) {
-    list = list.filter(item => item.paymentMethod === searchForm.paymentMethod)
-  }
-  if (searchForm.transactionType) {
-    list = list.filter(item => item.transactionType === searchForm.transactionType)
-  }
-  total.value = list.length
-  const start = (currentPage.value - 1) * pageSize.value
-  return list.slice(start, start + pageSize.value)
-})
+}
 
 const getPaymentMethodText = (method: string) => {
   const map: Record<string, string> = { wechat: '微信支付', alipay: '支付宝', bank: '银行卡' }
@@ -268,6 +260,7 @@ const getStatusTagType = (status: string) => {
 
 const handleSearch = () => {
   currentPage.value = 1
+  fetchData()
 }
 
 const resetSearch = () => {
@@ -276,14 +269,11 @@ const resetSearch = () => {
   searchForm.transactionType = ''
   searchForm.dateRange = null
   currentPage.value = 1
+  fetchData()
 }
 
 const refreshList = () => {
-  tableLoading.value = true
-  setTimeout(() => {
-    tableLoading.value = false
-    ElMessage.success('已刷新')
-  }, 500)
+  fetchData()
 }
 
 const exportData = () => {
@@ -292,15 +282,17 @@ const exportData = () => {
 
 const handleSizeChange = (val: number) => {
   pageSize.value = val
+  currentPage.value = 1
+  fetchData()
 }
 
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
+  fetchData()
 }
 
 onMounted(() => {
-  tableLoading.value = false
-  total.value = allTransactions.value.length
+  fetchData()
 })
 </script>
 

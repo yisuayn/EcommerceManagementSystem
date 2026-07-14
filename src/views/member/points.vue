@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, RefreshLeft, Edit } from '@element-plus/icons-vue'
+import { getPointsRule, getPointsLog } from '@/api/member'
 
 const activeTab = ref('rule')
 
@@ -33,25 +34,43 @@ const saveRule = () => {
 
 const searchForm = reactive({ keyword: '', type: '' })
 
-const mockLogs = Array.from({ length: 50 }, (_, i) => ({
-  id: `PL${String(i + 1).padStart(5, '0')}`,
-  member: (['张三', '李四', '王五', '赵六'][i % 4]) || '',
-  phone: `138${String(10000000 + i).slice(0, 8)}`,
-  type: (['签到', '消费', '评价', '退款扣除', '管理员调整'][Math.floor(Math.random() * 5)]) || '',
-  points: ([5, 100, 20, -200, 500][Math.floor(Math.random() * 5)]) || 0,
-  balance: Math.floor(Math.random() * 5000),
-  remark: (['每日签到', '订单消费获得', '发表评价', '订单退款', '管理员手动调整'][Math.floor(Math.random() * 5)]) || '',
-  createTime: `2026-07-${String(1 + Math.floor(Math.random() * 7)).padStart(2, '0')} ${String(8 + Math.floor(Math.random() * 10)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
-}))
-
 const tableData = ref<PointsLog[]>([])
-const loadLogs = () => {
-  let filtered = [...mockLogs]
-  if (searchForm.keyword) filtered = filtered.filter(l => l.member.includes(searchForm.keyword) || l.phone.includes(searchForm.keyword))
-  if (searchForm.type) filtered = filtered.filter(l => l.type === searchForm.type)
-  tableData.value = filtered
+const logLoading = ref(false)
+const logTotal = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(15)
+
+const loadLogs = async (page = 1) => {
+  logLoading.value = true
+  try {
+    const params: any = { page, pageSize: pageSize.value }
+    if (searchForm.keyword) params.keyword = searchForm.keyword
+    if (searchForm.type) params.type = searchForm.type
+    const res = await getPointsLog(params)
+    tableData.value = res.data.list || res.data.records || []
+    logTotal.value = res.data.total || 0
+  } catch (e) {
+    console.log(e)
+  } finally {
+    logLoading.value = false
+  }
 }
-loadLogs()
+
+const loadRule = async () => {
+  try {
+    const res = await getPointsRule()
+    if (res.data) {
+      Object.assign(ruleForm, res.data)
+    }
+  } catch (e) {
+    console.log(e)
+  }
+}
+
+onMounted(() => {
+  loadRule()
+  loadLogs()
+})
 </script>
 
 <template>
@@ -112,14 +131,14 @@ loadLogs()
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary"><el-icon><Search /></el-icon>查询</el-button>
-              <el-button><el-icon><RefreshLeft /></el-icon>重置</el-button>
+              <el-button type="primary" @click="currentPage = 1; loadLogs()"><el-icon><Search /></el-icon>查询</el-button>
+              <el-button @click="searchForm.keyword = ''; searchForm.type = ''; currentPage = 1; loadLogs()"><el-icon><RefreshLeft /></el-icon>重置</el-button>
             </el-form-item>
           </el-form>
         </el-card>
 
         <el-card class="table-card" shadow="never">
-          <el-table :data="tableData" border stripe>
+          <el-table :data="tableData" border stripe v-loading="logLoading">
             <el-table-column prop="member" label="会员" width="120" />
             <el-table-column prop="phone" label="手机号" width="140" />
             <el-table-column prop="type" label="类型" width="130" align="center">
@@ -141,8 +160,8 @@ loadLogs()
             <el-table-column prop="createTime" label="时间" width="160" />
           </el-table>
           <div class="pagination-container">
-            <el-pagination :total="tableData.length" background layout="total, sizes, prev, pager, next"
-              :page-sizes="[15, 25, 35, 45]" />
+            <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="logTotal" background layout="total, sizes, prev, pager, next"
+              :page-sizes="[15, 25, 35, 45]" @size-change="currentPage = 1; loadLogs()" @current-change="loadLogs" />
           </div>
         </el-card>
       </el-tab-pane>

@@ -346,13 +346,14 @@ import {
   Search,
   RefreshLeft
 } from '@element-plus/icons-vue'
+import { getCouponList, saveCoupon, sendCoupon as sendCouponApi } from '@/api/marketing'
 
 // 统计数据
 const statistics = reactive({
-  total: 28,
-  active: 12,
-  todaySend: 156,
-  todayUsed: 89
+  total: 0,
+  active: 0,
+  todaySend: 0,
+  todayUsed: 0
 })
 
 // 搜索表单
@@ -364,56 +365,7 @@ const searchForm = reactive({
 })
 
 // 优惠券列表
-const couponList = ref([
-  {
-    id: 1,
-    name: '新人专享券',
-    type: 'cash',
-    value: 10,
-    condition: 0,
-    totalQuantity: 10000,
-    receivedCount: 8520,
-    usedCount: 6321,
-    userLimit: 1,
-    validDays: 30,
-    validType: 'days',
-    status: 'active',
-    applyType: 'all',
-    description: '新用户专享优惠券'
-  },
-  {
-    id: 2,
-    name: '满100减20',
-    type: 'full_reduction',
-    value: 20,
-    condition: 100,
-    totalQuantity: 5000,
-    receivedCount: 3250,
-    usedCount: 2150,
-    userLimit: 2,
-    validDays: 15,
-    validType: 'days',
-    status: 'active',
-    applyType: 'all',
-    description: '全场通用，满100元减20元'
-  },
-  {
-    id: 3,
-    name: '8折优惠券',
-    type: 'discount',
-    value: 8,
-    condition: 0,
-    totalQuantity: 3000,
-    receivedCount: 2150,
-    usedCount: 1450,
-    userLimit: 1,
-    validDays: 7,
-    validType: 'days',
-    status: 'pending',
-    applyType: 'category',
-    description: '指定分类商品8折'
-  }
-])
+const couponList = ref<any[]>([])
 
 // 分类选项
 const categoryOptions = ref([
@@ -452,6 +404,7 @@ const dialogVisible = ref(false)
 const dialogType = ref<'create' | 'edit'>('create')
 const formRef = ref()
 const couponForm = reactive({
+  id: null as number | null,
   name: '',
   type: 'full_reduction',
   condition: 0,
@@ -556,9 +509,19 @@ const sendCoupon = (row: any) => {
 // 提交发放
 const submitSend = async () => {
   await sendFormRef.value?.validate()
-  ElMessage.success('发放成功')
-  sendDialogVisible.value = false
-  loadCouponList()
+  try {
+    await sendCouponApi({
+      sendType: sendForm.sendType,
+      userId: sendForm.userId,
+      quantity: sendForm.quantity,
+      remark: sendForm.remark
+    })
+    ElMessage.success('发放成功')
+    sendDialogVisible.value = false
+    loadCouponList()
+  } catch {
+    ElMessage.error('发放失败')
+  }
 }
 
 // 切换状态
@@ -590,9 +553,29 @@ const deleteCoupon = (row: any) => {
 // 提交表单
 const submitForm = async () => {
   await formRef.value?.validate()
-  ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
-  dialogVisible.value = false
-  loadCouponList()
+  try {
+    await saveCoupon({
+      id: (couponForm as any).id || undefined,
+      name: couponForm.name,
+      type: couponForm.type,
+      value: couponForm.value,
+      condition: couponForm.condition || undefined,
+      totalQuantity: couponForm.totalQuantity,
+      userLimit: couponForm.userLimit,
+      validType: couponForm.validType,
+      validDays: couponForm.validDays,
+      validRange: couponForm.validRange,
+      applyType: couponForm.applyType,
+      categories: couponForm.categories,
+      products: couponForm.products,
+      description: couponForm.description
+    })
+    ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
+    dialogVisible.value = false
+    loadCouponList()
+  } catch {
+    ElMessage.error(dialogType.value === 'create' ? '创建失败' : '更新失败')
+  }
 }
 
 // 关闭对话框
@@ -618,11 +601,31 @@ const refreshList = () => {
   loadCouponList()
 }
 
-const loadCouponList = () => {
+const loadCouponList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      name: searchForm.name || undefined,
+      type: searchForm.type || undefined,
+      sendType: searchForm.sendType || undefined,
+      status: searchForm.status || undefined
+    }
+    const res = await getCouponList(params)
+    couponList.value = res.data.list || []
+    total.value = res.data.total || 0
+    // 计算统计数据
+    const list = couponList.value
+    statistics.total = list.length
+    statistics.active = list.filter((item: any) => item.status === 'active').length
+    statistics.todaySend = list.reduce((sum: number, item: any) => sum + (item.todaySend || 0), 0)
+    statistics.todayUsed = list.reduce((sum: number, item: any) => sum + (item.todayUsed || 0), 0)
+  } catch {
+    ElMessage.error('获取优惠券列表失败')
+  } finally {
     tableLoading.value = false
-  }, 500)
+  }
 }
 
 const handleSelectionChange = (val: any[]) => {

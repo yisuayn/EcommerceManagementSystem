@@ -241,6 +241,7 @@ import {
   CaretTop,
   CaretBottom
 } from '@element-plus/icons-vue'
+import { dashboardApi } from '@/api/dashboard'
 
 // 日期范围
 const dateRange = ref<[Date, Date]>()
@@ -299,71 +300,42 @@ const salesDetailList = ref<any[]>([])
 
 // 销售数据
 const salesData = reactive({
-  totalSales: 1256800,
-  totalOrders: 8542,
-  totalUsers: 12350,
-  conversionRate: 3.2,
-  trend: 12.5,
-  orderTrend: 8.3,
-  userTrend: 15.2,
-  conversionTrend: 2.1
+  totalSales: 0,
+  totalOrders: 0,
+  totalUsers: 0,
+  conversionRate: 0,
+  trend: 0,
+  orderTrend: 0,
+  userTrend: 0,
+  conversionTrend: 0
 })
 
 // 模拟数据 - 销售趋势
 const getSalesTrendData = () => {
-  if (salesChartType.value === 'day') {
-    return {
-      xAxis: ['1日', '2日', '3日', '4日', '5日', '6日', '7日', '8日', '9日', '10日', '11日', '12日', '13日', '14日', '15日', '16日', '17日', '18日', '19日', '20日', '21日', '22日', '23日', '24日', '25日', '26日', '27日', '28日', '29日', '30日'],
-      sales: [32000, 35000, 38000, 42000, 45000, 48000, 52000, 55000, 58000, 62000, 65000, 68000, 72000, 75000, 78000, 82000, 85000, 88000, 92000, 95000, 98000, 102000, 105000, 108000, 112000, 115000, 118000, 122000, 125000, 128000],
-      orders: [320, 350, 380, 420, 450, 480, 520, 550, 580, 620, 650, 680, 720, 750, 780, 820, 850, 880, 920, 950, 980, 1020, 1050, 1080, 1120, 1150, 1180, 1220, 1250, 1280]
-    }
-  } else if (salesChartType.value === 'week') {
-    return {
-      xAxis: ['第1周', '第2周', '第3周', '第4周'],
-      sales: [250000, 380000, 420000, 550000],
-      orders: [2500, 3800, 4200, 5500]
-    }
-  } else {
-    return {
-      xAxis: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-      sales: [850000, 920000, 1020000, 1180000, 1350000, 1520000, 1680000, 1750000, 1820000, 1950000, 2100000, 2350000],
-      orders: [8500, 9200, 10200, 11800, 13500, 15200, 16800, 17500, 18200, 19500, 21000, 23500]
-    }
-  }
+  return salesTrendData.value
 }
 
 // 商品销量排行数据
-const productRankingData = {
-  xAxis: ['iPhone 15', '华为 Mate 60', '小米 14', 'vivo X100', 'OPPO Find X7', '荣耀 Magic 6'],
-  sales: [3250, 2980, 2750, 2420, 2180, 1950]
-}
+const productRankingData = ref({
+  xAxis: [],
+  sales: []
+})
 
 // 分类销售占比数据
-const categoryData = [
-  { name: '手机数码', value: 45 },
-  { name: '服装鞋帽', value: 25 },
-  { name: '食品生鲜', value: 15 },
-  { name: '美妆护肤', value: 10 },
-  { name: '家居生活', value: 5 }
-]
+const categoryData = ref<{name: string, value: number}[]>([])
 
 // 用户来源数据
-const userSourceData = [
-  { name: '直接访问', value: 35 },
-  { name: '搜索引擎', value: 30 },
-  { name: '社交媒体', value: 20 },
-  { name: '外部链接', value: 10 },
-  { name: '广告投放', value: 5 }
-]
+const userSourceData = ref<{name: string, value: number}[]>([])
 
 // 订单状态分布数据
-const orderStatusData = [
-  { name: '已完成', value: 65 },
-  { name: '待支付', value: 15 },
-  { name: '待发货', value: 12 },
-  { name: '已取消', value: 5 },
-  { name: '退款中', value: 3 }
-]
+const orderStatusData = ref<{name: string, value: number}[]>([])
+
+// 销售趋势数据
+const salesTrendData = ref({
+  xAxis: [],
+  sales: [],
+  orders: []
+})
 
 // 初始化销售趋势图表
 const initSalesChart = () => {
@@ -447,6 +419,8 @@ const initSalesChart = () => {
 // 初始化商品销量排行图表
 const initProductChart = () => {
   if (!productChartRef.value) return
+  const data = productRankingData.value
+  if (!data.xAxis.length) return
 
   if (productChart) {
     productChart.dispose()
@@ -471,7 +445,7 @@ const initProductChart = () => {
     },
     yAxis: {
       type: 'category',
-      data: productRankingData.xAxis,
+      data: data.xAxis,
       axisLabel: {
         fontSize: 12
       }
@@ -480,7 +454,7 @@ const initProductChart = () => {
       {
         name: '销量',
         type: 'bar',
-        data: productRankingData.sales,
+        data: data.sales,
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
           color: {
@@ -510,6 +484,8 @@ const initProductChart = () => {
 // 初始化分类销售占比图表
 const initCategoryChart = () => {
   if (!categoryChartRef.value) return
+  const data = categoryData.value
+  if (!data.length) return
 
   if (categoryChart) {
     categoryChart.dispose()
@@ -525,7 +501,7 @@ const initCategoryChart = () => {
     legend: {
       orient: 'vertical',
       left: 'left',
-      data: categoryData.map(item => item.name)
+      data: data.map(item => item.name)
     },
     series: [
       {
@@ -533,7 +509,7 @@ const initCategoryChart = () => {
         type: 'pie',
         radius: '55%',
         center: ['50%', '50%'],
-        data: categoryData,
+        data: categoryData.value,
         emphasis: {
           itemStyle: {
             shadowBlur: 10,
@@ -555,6 +531,8 @@ const initCategoryChart = () => {
 // 初始化用户来源图表
 const initSourceChart = () => {
   if (!sourceChartRef.value) return
+  const data = userSourceData.value
+  if (!data.length) return
 
   if (sourceChart) {
     sourceChart.dispose()
@@ -570,7 +548,7 @@ const initSourceChart = () => {
     legend: {
       orient: 'vertical',
       left: 'left',
-      data: userSourceData.map(item => item.name)
+      data: data.map(item => item.name)
     },
     series: [
       {
@@ -593,7 +571,7 @@ const initSourceChart = () => {
             fontWeight: 'bold'
           }
         },
-        data: userSourceData
+        data: data
       }
     ]
   }
@@ -604,6 +582,8 @@ const initSourceChart = () => {
 // 初始化订单状态图表
 const initOrderStatusChart = () => {
   if (!orderStatusChartRef.value) return
+  const data = orderStatusData.value
+  if (!data.length) return
 
   if (orderStatusChart) {
     orderStatusChart.dispose()
@@ -624,7 +604,7 @@ const initOrderStatusChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: orderStatusData.map(item => item.name),
+      data: data.map(item => item.name),
       axisLabel: {
         rotate: 30
       }
@@ -637,7 +617,7 @@ const initOrderStatusChart = () => {
       {
         name: '占比',
         type: 'bar',
-        data: orderStatusData.map(item => item.value),
+        data: data.map(item => item.value),
         itemStyle: {
           borderRadius: [4, 4, 0, 0],
           color: {
@@ -667,25 +647,64 @@ const initOrderStatusChart = () => {
 // 获取销售明细数据
 const getSalesDetail = async () => {
   tableLoading.value = true
-
-  // 模拟API请求
-  setTimeout(() => {
-    const mockData = Array.from({ length: 50 }, (_, i) => ({
-      id: i + 1,
-      date: `2024-06-${String((i % 30) + 1).padStart(2, '0')}`,
-      orderNo: `ORD${String(Date.now() + i).slice(-10)}`,
-      productName: ['iPhone 15', '华为 Mate 60', '小米 14', 'vivo X100', 'OPPO Find X7'][Math.floor(Math.random() * 5)],
-      quantity: Math.floor(Math.random() * 10) + 1,
-      amount: Math.floor(Math.random() * 10000) + 1000,
-      status: Math.random() > 0.8 ? 0 : 1
-    }))
-
+  try {
+    const res = await dashboardApi()
+    const data = res.data || {}
     const start = (currentPage.value - 1) * pageSize.value
     const end = start + pageSize.value
-    salesDetailList.value = mockData.slice(start, end)
-    total.value = mockData.length
+    salesDetailList.value = (data.salesDetail || []).slice(start, end)
+    total.value = data.salesDetail?.length || 0
+  } catch (error) {
+    console.log(error)
+  } finally {
     tableLoading.value = false
-  }, 500)
+  }
+}
+
+// 加载仪表盘/报表数据
+const loadDashboardData = async () => {
+  try {
+    const res = await dashboardApi()
+    const data = res.data || {}
+
+    // Update summary stats
+    if (data.summary) {
+      salesData.totalSales = data.summary.totalSales || 0
+      salesData.totalOrders = data.summary.totalOrders || 0
+      salesData.totalUsers = data.summary.totalUsers || 0
+      salesData.conversionRate = data.summary.conversionRate || 0
+      salesData.trend = data.summary.trend || 0
+      salesData.orderTrend = data.summary.orderTrend || 0
+      salesData.userTrend = data.summary.userTrend || 0
+      salesData.conversionTrend = data.summary.conversionTrend || 0
+    }
+
+    // Update chart data
+    if (data.salesTrend) {
+      salesTrendData.value = data.salesTrend
+    }
+    if (data.productRanking) {
+      productRankingData.value = data.productRanking
+    }
+    if (data.categorySales) {
+      categoryData.value = data.categorySales
+    }
+    if (data.userSource) {
+      userSourceData.value = data.userSource
+    }
+    if (data.orderStatus) {
+      orderStatusData.value = data.orderStatus
+    }
+
+    // Re-render charts
+    initSalesChart()
+    initProductChart()
+    initCategoryChart()
+    initSourceChart()
+    initOrderStatusChart()
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 // 格式化数字
@@ -723,8 +742,7 @@ const updateSalesChart = () => {
 
 // 刷新数据
 const refreshData = () => {
-  ElMessage.success('数据已刷新')
-  initSalesChart()
+  loadDashboardData()
   getSalesDetail()
 }
 
@@ -759,12 +777,8 @@ const handleResize = () => {
 }
 
 // 初始化
-onMounted(() => {
-  initSalesChart()
-  initProductChart()
-  initCategoryChart()
-  initSourceChart()
-  initOrderStatusChart()
+onMounted(async () => {
+  await loadDashboardData()
   getSalesDetail()
   window.addEventListener('resize', handleResize)
 })

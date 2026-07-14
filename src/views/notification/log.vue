@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Search, RefreshLeft, Promotion, SuccessFilled, WarnTriangleFilled, DataAnalysis } from '@element-plus/icons-vue'
+import { getSendLogList } from '@/api/notification'
 
 interface SendLog {
   id: number
@@ -19,7 +20,6 @@ const loading = ref(false)
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
-const sourceData = ref<SendLog[]>([])
 
 const detailDrawer = ref(false)
 const currentLog = ref<SendLog | null>(null)
@@ -29,15 +29,16 @@ const searchForm = reactive({
   recipient: '',
   type: '',
   status: '',
-  dateRange: null as [string, string] | null
+  dateRange: null as [Date, Date] | null
 })
 
 const statistics = computed(() => {
-  const total = sourceData.value.length
-  const success = sourceData.value.filter(l => l.status === 'success').length
-  const fail = sourceData.value.filter(l => l.status === 'fail').length
-  const rate = total > 0 ? ((success / total) * 100).toFixed(1) + '%' : '0%'
-  return { total, success, fail, rate }
+  const data = tableData.value
+  const totalCount = total.value
+  const success = data.filter(l => l.status === 'success').length
+  const fail = data.filter(l => l.status === 'fail').length
+  const rate = totalCount > 0 ? ((success / totalCount) * 100).toFixed(1) + '%' : '0%'
+  return { total: totalCount, success, fail, rate }
 })
 
 const typeOptions = [
@@ -51,68 +52,30 @@ const statusOptions = [
   { label: '失败', value: 'fail' }
 ]
 
-const mockLogs = Array.from({ length: 23 }, (_, i) => ({
-  id: i + 1,
-  templateName: ([
-    '订单支付通知-短信', '订单支付通知-邮件', '注册欢迎-站内信', '发货通知-短信',
-    '退款通知-短信', '促销活动-邮件', '密码重置-邮件', '会员升级-站内信'
-  ][i % 8]) || '',
-  recipient: ([
-    '138****1234', 'wang@example.com', 'admin', '139****5678',
-    'li@example.com', 'zhao@example.com', '136****9012', 'member001'
-  ][i % 8]) || '',
-  type: (['sms', 'email', 'internal', 'sms', 'sms', 'email', 'email', 'internal'] as const)[i % 8] || 'sms',
-  content: ([
-    '尊敬的张三，您的订单ORD20260001已支付成功，金额2999元...',
-    '尊敬的用户，您好！您的订单已支付成功，请查看详情。',
-    '欢迎注册成为我们的会员！送您一张新人优惠券。',
-    '您的订单ORD20260003已发货，请注意查收。',
-    '您的退款申请已处理，退款金额199元，预计3个工作日内到账。',
-    '商城大促来袭！全场满减优惠，点击查看详情。',
-    '您好，您正在重置密码，验证码已发送。',
-    '恭喜您升级为高级会员！享受更多专属权益。'
-  ][i % 8]) || '',
-  status: i % 7 === 3 ? 'fail' as const : 'success' as const,
-  sendTime: `2026-0${1 + Math.floor(i / 7)}-${String(10 + ((i * 5) % 18)).padStart(2, '0')} ${String(8 + (i % 12)).padStart(2, '0')}:${String((i * 13) % 60).padStart(2, '0')}:${String((i * 3) % 60).padStart(2, '0')}`,
-  failReason: i % 7 === 3 ? [
-    '手机号码无效',
-    '邮箱地址不存在',
-    '短信通道异常，发送超时',
-    '模板变量替换失败'
-  ][Math.floor(i / 7) % 4] : undefined
-}))
-
-const loadData = () => {
+const loadData = async () => {
   loading.value = true
-  setTimeout(() => {
-    let filtered = [...sourceData.value]
-
-    if (searchForm.templateName) {
-      filtered = filtered.filter(l => l.templateName.includes(searchForm.templateName))
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
     }
-    if (searchForm.recipient) {
-      filtered = filtered.filter(l => l.recipient.includes(searchForm.recipient))
-    }
-    if (searchForm.type) {
-      filtered = filtered.filter(l => l.type === searchForm.type)
-    }
-    if (searchForm.status) {
-      filtered = filtered.filter(l => l.status === searchForm.status)
-    }
+    if (searchForm.templateName) params.templateName = searchForm.templateName
+    if (searchForm.recipient) params.recipient = searchForm.recipient
+    if (searchForm.type) params.type = searchForm.type
+    if (searchForm.status) params.status = searchForm.status
     if (searchForm.dateRange && searchForm.dateRange[0] && searchForm.dateRange[1]) {
-      const start = new Date(searchForm.dateRange[0]).getTime()
-      const end = new Date(searchForm.dateRange[1]).getTime()
-      filtered = filtered.filter(l => {
-        const t = new Date(l.sendTime).getTime()
-        return t >= start && t <= end
-      })
+      params.startTime = searchForm.dateRange[0]
+      params.endTime = searchForm.dateRange[1]
     }
-
-    total.value = filtered.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = filtered.slice(start, start + pageSize.value)
+    const res = await getSendLogList(params)
+    const data = res.data || res
+    tableData.value = data.list || []
+    total.value = data.total || 0
+  } catch {
+    ElMessage.error('获取发送记录失败')
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const handleSearch = () => {
@@ -137,7 +100,6 @@ const getTypeLabel = (type: string) => {
 }
 
 onMounted(() => {
-  sourceData.value = mockLogs
   loadData()
 })
 </script>
@@ -275,7 +237,7 @@ onMounted(() => {
         <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
           :page-sizes="[10, 20, 30, 50]" :total="total" background
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSearch" @current-change="loadData" />
+          @size-change="currentPage = 1; loadData()" @current-change="loadData" />
       </div>
     </el-card>
 

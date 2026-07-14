@@ -61,18 +61,17 @@
 <script setup lang="ts">
 import { ShoppingCart, Goods, User, Money, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import "./dashboard.scss"
-import { onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { dashboardApi } from "@/api/dashboard"
-
-const statsData = [
-    { title: '今日订单', value: '1,234', trend: 12.5, icon: ShoppingCart, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-    { title: '商品总数', value: '8,942', trend: 3.2, icon: Goods, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-    { title: '用户总数', value: '15,678', trend: 8.7, icon: User, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-    { title: '今日收入', value: '¥89,234', trend: -2.3, icon: Money, gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }
-]
-
-import { ref } from 'vue'
 import UniversalChart, { type ChartType } from '@/components/echarts/index.vue'
+
+// 统计数据 - 初始硬编码，后续被API数据替换
+const statsData = ref([
+    { title: '今日订单', value: '0', trend: 0, icon: ShoppingCart, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+    { title: '商品总数', value: '0', trend: 0, icon: Goods, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
+    { title: '用户总数', value: '0', trend: 0, icon: User, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
+    { title: '今日收入', value: '¥0', trend: 0, icon: Money, gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }
+])
 
 const currentType = ref<ChartType>('line')
 const chartTypes: ChartType[] = ['line', 'bar', 'pie', 'scatter', 'radar', 'gauge']
@@ -86,38 +85,59 @@ const chartTypeMap = new Map<ChartType, string>([
     ['gauge', '仪表盘']
 ])
 
-// 折线图数据
+// 图表数据
 const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月']
-const lineData = [65, 72, 88, 95, 110, 135, 158, 142]
+const lineData = ref([65, 72, 88, 95, 110, 135, 158, 142])
 
-// 柱状图数据
 const products = ['手机', '电脑', '平板', '耳机', '手表', '相机']
-const barData = [325, 268, 198, 345, 156, 98]
+const barData = ref([325, 268, 198, 345, 156, 98])
 
-// 饼图数据
-const pieData = [
+const pieData = ref([
     { name: '电商平台', value: 45 },
     { name: '实体店', value: 28 },
     { name: '直播带货', value: 18 },
     { name: '其他渠道', value: 9 }
-]
+])
 
-// 散点图数据
-const scatterData = [
-    [160, 55], [165, 60], [170, 65], [175, 70],
-    [180, 75], [172, 68], [168, 62], [178, 72]
-]
+const scatterData = ref<any[]>([])
+const radarIndicators = ref<string[]>([])
+const radarData = ref<any[]>([])
+const gaugeValue = ref(0)
 
-// 雷达图数据
-const radarIndicators = ['技术能力', '沟通能力', '管理能力', '创新能力', '执行力', '学习能力']
-const radarData = [92, 78, 85, 88, 90, 95]
-
-// 仪表盘数据
-const gaugeValue = 75
 const fatehalldata = async () => {
     try {
         const res = await dashboardApi()
-        console.log(res);
+        const data = res.data || {}
+
+        // Update stats data from API
+        if (data.stats) {
+            const iconMap = [ShoppingCart, Goods, User, Money]
+            const gradients = [
+                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+            ]
+            const titles = ['今日订单', '商品总数', '用户总数', '今日收入']
+            statsData.value = (data.stats || []).map((item: any, index: number) => ({
+                title: titles[index] || item.title,
+                value: item.value || '0',
+                trend: item.trend || 0,
+                icon: iconMap[index] || ShoppingCart,
+                gradient: gradients[index] || gradients[0]
+            }))
+        }
+
+        // Update chart data from API
+        if (data.months) months.length = 0 && months.push(...data.months)
+        if (data.lineData) lineData.value = data.lineData
+        if (data.products) products.length = 0 && products.push(...data.products)
+        if (data.barData) barData.value = data.barData
+        if (data.pieData) pieData.value = data.pieData
+        if (data.scatterData) scatterData.value = data.scatterData
+        if (data.radarIndicators) radarIndicators.value = data.radarIndicators
+        if (data.radarData) radarData.value = data.radarData
+        if (data.gaugeValue !== undefined) gaugeValue.value = data.gaugeValue
     } catch (error) {
         console.log(error);
     }
@@ -126,10 +146,9 @@ const fatehalldata = async () => {
 // 获取中文名称
 const getTypeName = (type: ChartType) => {
     return chartTypeMap.get(type) || type
-    // 或 return chartTypeNames[type]
 }
 
-onMounted(() => {//guaizaishuju ,dom渲染完
-    // fatehalldata()
+onMounted(() => {
+    fatehalldata()
 })
 </script>

@@ -130,6 +130,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import type { FormInstance } from 'element-plus'
+import { getBannerList, saveBanner, deleteBanner as deleteBannerApi } from '@/api/cms'
 
 interface BannerItem {
   id: number
@@ -149,63 +150,7 @@ const dialogType = ref<'create' | 'edit'>('create')
 const formRef = ref<FormInstance>()
 const editingId = ref<number | null>(null)
 
-const bannerList = ref<BannerItem[]>([
-  {
-    id: 1,
-    title: '节日促销',
-    subtitle: '全场低至5折，限时抢购',
-    image: 'https://via.placeholder.com/80x40/409eff/fff?text=1',
-    linkUrl: 'promotion/holiday',
-    sortOrder: 1,
-    status: 1,
-    startTime: '2025-06-01 00:00:00',
-    endTime: '2025-06-30 23:59:59'
-  },
-  {
-    id: 2,
-    title: '新品上架',
-    subtitle: '2025夏季新品首发',
-    image: 'https://via.placeholder.com/80x40/67c23a/fff?text=2',
-    linkUrl: 'product/new',
-    sortOrder: 2,
-    status: 1,
-    startTime: '2025-06-15 00:00:00',
-    endTime: '2025-07-15 23:59:59'
-  },
-  {
-    id: 3,
-    title: '限时秒杀',
-    subtitle: '每日10点场，爆款低至1折',
-    image: 'https://via.placeholder.com/80x40/e6a23c/fff?text=3',
-    linkUrl: 'seckill/daily',
-    sortOrder: 3,
-    status: 1,
-    startTime: '2025-06-20 00:00:00',
-    endTime: '2025-06-27 23:59:59'
-  },
-  {
-    id: 4,
-    title: '品牌特卖',
-    subtitle: '大牌专场，品质保障',
-    image: 'https://via.placeholder.com/80x40/f56c6c/fff?text=4',
-    linkUrl: 'brand/sale',
-    sortOrder: 4,
-    status: 0,
-    startTime: '2025-07-01 00:00:00',
-    endTime: '2025-07-31 23:59:59'
-  },
-  {
-    id: 5,
-    title: '会员日',
-    subtitle: 'VIP专享，双倍积分',
-    image: 'https://via.placeholder.com/80x40/909399/fff?text=5',
-    linkUrl: 'member/day',
-    sortOrder: 5,
-    status: 0,
-    startTime: '2025-07-08 00:00:00',
-    endTime: '2025-07-08 23:59:59'
-  }
-])
+const bannerList = ref<BannerItem[]>([])
 
 const bannerForm = reactive({
   title: '',
@@ -220,6 +165,18 @@ const bannerForm = reactive({
 const bannerRules = {
   title: [{ required: true, message: '请输入 Banner 标题', trigger: 'blur' }],
   image: [{ required: true, message: '请输入图片 URL', trigger: 'blur' }]
+}
+
+const loadData = async () => {
+  tableLoading.value = true
+  try {
+    const res = await getBannerList({ page: 1, pageSize: 100 })
+    bannerList.value = res.data.list || res.data || []
+  } catch (e) {
+    console.log(e)
+  } finally {
+    tableLoading.value = false
+  }
 }
 
 const openCreateDialog = () => {
@@ -245,9 +202,15 @@ const openEditDialog = (row: BannerItem) => {
   dialogVisible.value = true
 }
 
-const handleStatusChange = (row: BannerItem) => {
-  const text = row.status === 1 ? '上架' : '下架'
-  ElMessage.success(`${text}成功`)
+const handleStatusChange = async (row: BannerItem) => {
+  try {
+    await saveBanner({ id: row.id, status: row.status })
+    const text = row.status === 1 ? '上架' : '下架'
+    ElMessage.success(`${text}成功`)
+  } catch (e) {
+    row.status = row.status === 1 ? 0 : 1
+    console.log(e)
+  }
 }
 
 const deleteBanner = (row: BannerItem) => {
@@ -255,19 +218,40 @@ const deleteBanner = (row: BannerItem) => {
     confirmButtonText: '确认',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const idx = bannerList.value.findIndex(item => item.id === row.id)
-    if (idx !== -1) {
-      bannerList.value.splice(idx, 1)
+  }).then(async () => {
+    try {
+      await deleteBannerApi(String(row.id))
+      ElMessage.success('删除成功')
+      loadData()
+    } catch (e) {
+      console.log(e)
     }
-    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
 const submitForm = async () => {
   await formRef.value?.validate()
-  ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
-  dialogVisible.value = false
+  try {
+    const data: any = {
+      title: bannerForm.title,
+      subtitle: bannerForm.subtitle,
+      image: bannerForm.image,
+      linkUrl: bannerForm.linkUrl,
+      sortOrder: bannerForm.sortOrder,
+      status: bannerForm.status
+    }
+    if (editingId.value) data.id = editingId.value
+    if (bannerForm.dateRange) {
+      data.startTime = bannerForm.dateRange[0].toISOString()
+      data.endTime = bannerForm.dateRange[1].toISOString()
+    }
+    await saveBanner(data)
+    ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 const closeDialog = () => {
@@ -276,15 +260,12 @@ const closeDialog = () => {
 }
 
 const refreshList = () => {
-  tableLoading.value = true
-  setTimeout(() => {
-    tableLoading.value = false
-    ElMessage.success('已刷新')
-  }, 500)
+  loadData()
+  ElMessage.success('已刷新')
 }
 
 onMounted(() => {
-  tableLoading.value = false
+  loadData()
 })
 </script>
 

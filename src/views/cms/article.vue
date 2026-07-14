@@ -145,10 +145,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search, RefreshLeft } from '@element-plus/icons-vue'
 import type { FormInstance } from 'element-plus'
+import { getArticleList, saveArticle, deleteArticle as deleteArticleApi } from '@/api/cms'
 
 interface ArticleItem {
   id: number
@@ -177,122 +178,7 @@ const searchForm = reactive({
   category: ''
 })
 
-const articleList = ref<ArticleItem[]>([
-  {
-    id: 1,
-    title: '平台2025年端午节放假通知',
-    category: 'announcement',
-    author: '管理员',
-    coverImage: 'https://via.placeholder.com/320x180/409eff/fff?text=Announce',
-    content: '尊敬的各位用户：根据国家法定节假日安排，平台将于2025年6月8日至6月10日放假三天。放假期间，平台各项服务正常运行，但审核及客服响应可能会有延迟，敬请谅解。祝大家端午安康！',
-    publishTime: '2025-06-01 10:00:00',
-    views: 12580,
-    status: 1
-  },
-  {
-    id: 2,
-    title: '618年中大促攻略来啦！',
-    category: 'activity',
-    author: '运营小编',
-    coverImage: 'https://via.placeholder.com/320x180/67c23a/fff?text=618',
-    content: '一年一度的618年中大促即将开启！今年平台联合数千个品牌商家，推出满300减50、跨店满减、限时秒杀等多重优惠活动。攻略在手，省钱不愁！',
-    publishTime: '2025-06-05 14:30:00',
-    views: 35200,
-    status: 1
-  },
-  {
-    id: 3,
-    title: '新手指南：如何快速发布商品',
-    category: 'guide',
-    author: '技术支持',
-    coverImage: 'https://via.placeholder.com/320x180/e6a23c/fff?text=Guide',
-    content: '欢迎新商家入驻！本文手把手教您如何在平台快速发布商品：第一步，进入商家后台点击"商品发布"；第二步，填写商品基本信息、上传图片、设置价格库存；第三步，提交审核。审核通过后即可上架销售。',
-    publishTime: '2025-05-20 09:00:00',
-    views: 8760,
-    status: 1
-  },
-  {
-    id: 4,
-    title: '2025年电商行业趋势分析',
-    category: 'news',
-    author: '行业观察',
-    coverImage: 'https://via.placeholder.com/320x180/f56c6c/fff?text=Trends',
-    content: '2025年电商行业呈现几大趋势：1. AI技术在电商领域的深度应用，从智能客服到个性化推荐；2. 社交电商持续增长，直播带货进入常态化运营；3. 即时零售市场快速扩张，一小时达成为新标配；4. 绿色消费理念盛行，可持续电商崛起。',
-    publishTime: '2025-06-10 11:00:00',
-    views: 42800,
-    status: 1
-  },
-  {
-    id: 5,
-    title: '【公告】平台服务协议更新通知',
-    category: 'announcement',
-    author: '法务部',
-    coverImage: 'https://via.placeholder.com/320x180/909399/fff?text=Legal',
-    content: '为进一步保障用户权益，平台对《用户服务协议》进行了修订。主要变更内容包括：完善个人信息保护条款、明确平台与商家的责任边界、优化争议处理流程等。新协议将于2025年7月1日起正式生效。',
-    publishTime: '2025-06-15 08:00:00',
-    views: 5600,
-    status: 1
-  },
-  {
-    id: 6,
-    title: '夏季清凉好物推荐合集',
-    category: 'activity',
-    author: '好物推荐官',
-    coverImage: 'https://via.placeholder.com/320x180/409eff/fff?text=Summer',
-    content: '炎炎夏日，平台精选了一批清凉好物：便携小风扇、冰凉坐垫、防晒喷雾、速干T恤……全场满199减30，更有品牌专区额外折扣。快来 pick 你的消暑神器吧！',
-    publishTime: '2025-06-18 16:00:00',
-    views: 18900,
-    status: 1
-  },
-  {
-    id: 7,
-    title: '商家入驻资质审核指南（2025版）',
-    category: 'guide',
-    author: '招商经理',
-    coverImage: 'https://via.placeholder.com/320x180/67c23a/fff?text=Merchant',
-    content: '2025年商家入驻资质要求更新：基础资质包括营业执照、法人身份证、银行账户信息；特殊行业需提供相应许可证（如食品经营许可证、医疗器械经营备案等）。提交材料需为清晰彩色扫描件或照片。',
-    publishTime: '2025-04-10 10:30:00',
-    views: 13200,
-    status: 1
-  },
-  {
-    id: 8,
-    title: '关于优化退换货流程的调研问卷',
-    category: 'announcement',
-    author: '产品经理',
-    coverImage: 'https://via.placeholder.com/320x180/e6a23c/fff?text=Survey',
-    content: '为了给您提供更好的售后服务体验，我们诚挚邀请您参与退换货流程优化调研问卷。问卷共10题，预计耗时3分钟。完成问卷即送5元无门槛优惠券。感谢您的支持！',
-    publishTime: '2025-06-12 15:00:00',
-    views: 3400,
-    status: 0
-  },
-  {
-    id: 9,
-    title: '跨境购频道正式上线',
-    category: 'news',
-    author: '国际事业部',
-    coverImage: 'https://via.placeholder.com/320x180/f56c6c/fff?text=Global',
-    content: '平台跨境购频道正式上线！首批上线日韩美妆、澳洲保健品、欧洲母婴用品等千余种海外商品。所有商品均由品牌直供或保税仓发货，正品保障，物流可追溯。',
-    publishTime: '2025-06-20 09:30:00',
-    views: 22000,
-    status: 0
-  }
-])
-
-const filteredList = computed(() => {
-  let list = articleList.value
-  if (searchForm.keyword) {
-    const kw = searchForm.keyword.toLowerCase()
-    list = list.filter(item => item.title.toLowerCase().includes(kw))
-  }
-  if (searchForm.category) {
-    list = list.filter(item => item.category === searchForm.category)
-  }
-  total.value = list.length
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return list.slice(start, end)
-})
+const filteredList = ref<ArticleItem[]>([])
 
 const articleForm = reactive({
   title: '',
@@ -330,6 +216,22 @@ const getCategoryTagType = (category: string) => {
   return map[category] || ''
 }
 
+const loadData = async () => {
+  tableLoading.value = true
+  try {
+    const params: any = { page: currentPage.value, pageSize: pageSize.value }
+    if (searchForm.keyword) params.keyword = searchForm.keyword
+    if (searchForm.category) params.category = searchForm.category
+    const res = await getArticleList(params)
+    filteredList.value = res.data.list || res.data.records || []
+    total.value = res.data.total || 0
+  } catch (e) {
+    console.log(e)
+  } finally {
+    tableLoading.value = false
+  }
+}
+
 const openCreateDialog = () => {
   dialogType.value = 'create'
   editingId.value = null
@@ -348,9 +250,15 @@ const openEditDialog = (row: ArticleItem) => {
   dialogVisible.value = true
 }
 
-const handleStatusChange = (row: ArticleItem) => {
-  const text = row.status === 1 ? '已发布' : '草稿'
-  ElMessage.success(`状态已切换为「${text}」`)
+const handleStatusChange = async (row: ArticleItem) => {
+  try {
+    await saveArticle({ id: row.id, status: row.status })
+    const text = row.status === 1 ? '已发布' : '草稿'
+    ElMessage.success(`状态已切换为「${text}」`)
+  } catch (e) {
+    row.status = row.status === 1 ? 0 : 1
+    console.log(e)
+  }
 }
 
 const deleteArticle = (row: ArticleItem) => {
@@ -358,44 +266,36 @@ const deleteArticle = (row: ArticleItem) => {
     confirmButtonText: '确认',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const idx = articleList.value.findIndex(item => item.id === row.id)
-    if (idx !== -1) {
-      articleList.value.splice(idx, 1)
+  }).then(async () => {
+    try {
+      await deleteArticleApi(String(row.id))
+      ElMessage.success('删除成功')
+      loadData()
+    } catch (e) {
+      console.log(e)
     }
-    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
 const submitForm = async () => {
   await formRef.value?.validate()
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
-  if (dialogType.value === 'create') {
-    const newId = Math.max(...articleList.value.map(i => i.id)) + 1
-    articleList.value.unshift({
-      id: newId,
+  try {
+    const data: any = {
       title: articleForm.title,
       category: articleForm.category,
       author: articleForm.author,
-      coverImage: articleForm.coverImage || 'https://via.placeholder.com/320x180/eee/999?text=Article',
+      coverImage: articleForm.coverImage,
       content: articleForm.content,
-      publishTime: now,
-      views: 0,
       status: articleForm.status
-    })
-  } else {
-    const item = articleList.value.find(i => i.id === editingId.value)
-    if (item) {
-      item.title = articleForm.title
-      item.category = articleForm.category
-      item.author = articleForm.author
-      item.coverImage = articleForm.coverImage
-      item.content = articleForm.content
-      item.status = articleForm.status
     }
+    if (editingId.value) data.id = editingId.value
+    await saveArticle(data)
+    ElMessage.success(dialogType.value === 'create' ? '发布成功' : '更新成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.log(e)
   }
-  ElMessage.success(dialogType.value === 'create' ? '发布成功' : '更新成功')
-  dialogVisible.value = false
 }
 
 const closeDialog = () => {
@@ -404,33 +304,34 @@ const closeDialog = () => {
 
 const handleSearch = () => {
   currentPage.value = 1
+  loadData()
 }
 
 const resetSearch = () => {
   searchForm.keyword = ''
   searchForm.category = ''
   currentPage.value = 1
+  loadData()
 }
 
 const refreshList = () => {
-  tableLoading.value = true
-  setTimeout(() => {
-    tableLoading.value = false
-    ElMessage.success('已刷新')
-  }, 500)
+  loadData()
+  ElMessage.success('已刷新')
 }
 
 const handleSizeChange = (val: number) => {
   pageSize.value = val
+  currentPage.value = 1
+  loadData()
 }
 
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
+  loadData()
 }
 
 onMounted(() => {
-  tableLoading.value = false
-  total.value = articleList.value.length
+  loadData()
 })
 </script>
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, reactive, computed } from 'vue'
+import { onMounted, ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, RefreshLeft, ChatLineRound, Check, WarnTriangleFilled } from '@element-plus/icons-vue'
+import { Search, RefreshLeft, ChatLineRound, Check, WarnTriangleFilled, Delete } from '@element-plus/icons-vue'
+import { getReviewList, auditReview, replyReview, deleteReview } from '@/api/review'
 
 interface Review {
   id: number
@@ -17,7 +18,6 @@ interface Review {
   reply?: string
 }
 
-const allReviews = ref<Review[]>([])
 const tableData = ref<Review[]>([])
 const loading = ref(false)
 const total = ref(0)
@@ -36,11 +36,11 @@ const replyDialog = ref(false)
 const currentReview = ref<Review | null>(null)
 const replyContent = ref('')
 
-const statistics = computed(() => ({
-  total: allReviews.value.length,
-  pending: allReviews.value.filter(r => r.status === 'pending').length,
-  blocked: allReviews.value.filter(r => r.status === 'blocked').length
-}))
+const statistics = reactive({
+  total: 0,
+  pending: 0,
+  blocked: 0
+})
 
 const statusOptions = [
   { label: '待审核', value: 'pending' },
@@ -57,61 +57,36 @@ const ratingOptions = [
   { label: '1星', value: 1 }
 ]
 
-const mockReviews = Array.from({ length: 25 }, (_, i) => ({
-  id: i + 1,
-  productName: ([
-    'Apple iPhone 15 Pro Max 原色钛金属',
-    '华为 Mate 60 Pro 雅丹黑',
-    'Nike Air Force 1 白色经典款',
-    '索尼 WH-1000XM5 头戴式降噪耳机',
-    '戴森 V15 Detect 无绳吸尘器',
-    '小米14 Ultra 徕卡光学 白色',
-    'AirPods Pro 2 USB-C 版本',
-    'MacBook Air M3 星光色',
-    '乐高 兰博基尼 Sián FKP 37 机械组',
-    '三星 Galaxy S24 Ultra 钛灰'
-  ][i % 10]) || '',
-  productImage: 'https://via.placeholder.com/50x50',
-  member: (['张小明', '李小红', '王大伟', '赵丽华', '陈志远', '刘美丽', '周建国', '吴秀英'][i % 8]) || '',
-  rating: (i % 5) + 1,
-  content: ([
-    '非常满意，物流很快，包装完好，商品质量很好，和描述一致，下次还会购买。',
-    '产品不错，性价比高，发货速度快，客服态度也很好，值得推荐。',
-    '一般般吧，没有想象中好，但也不算差，勉强能用，这个价位还算合理。',
-    '质量很差，用了不到一周就坏了，联系客服也不处理，差评！',
-    '外观漂亮，手感很好，功能齐全，系统流畅，拍照效果惊艳，非常值得入手。',
-    '和描述不符，实物颜色有偏差，尺寸也偏小，建议买大一号，不太满意。',
-    '包装很精致，送礼合适，但产品本身没有很惊艳，中规中矩。',
-    '太好用了！解决了我的大问题，强烈推荐给有需要的朋友，五星好评！'
-  ][i % 8]) || '',
-  imagesCount: i % 4,
-  images: Array.from({ length: i % 4 }, (_, j) => `https://picsum.photos/seed/review${i}_${j}/200/200`),
-  createTime: `2026-0${1 + Math.floor(i / 8)}-${String(10 + ((i * 3) % 18)).padStart(2, '0')} ${String(9 + (i % 12)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}:00`,
-  status: (['pending', 'approved', 'approved', 'blocked', 'approved', 'pending', 'approved', 'blocked', 'approved', 'pending'] as const)[i % 10] || 'pending',
-  reply: i % 3 === 0 ? '感谢您的支持，我们会继续努力提供更好的服务！' : undefined
-}))
-
-const loadData = () => {
+const loadData = async () => {
   loading.value = true
-  setTimeout(() => {
-    let filtered = [...mockReviews]
-    if (searchForm.productName) {
-      filtered = filtered.filter(r => r.productName.includes(searchForm.productName))
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
     }
-    if (searchForm.member) {
-      filtered = filtered.filter(r => r.member.includes(searchForm.member))
+    if (searchForm.productName) params.productName = searchForm.productName
+    if (searchForm.member) params.member = searchForm.member
+    if (searchForm.rating !== '') params.rating = searchForm.rating
+    if (searchForm.status) params.status = searchForm.status
+    const res = await getReviewList(params)
+    const data = res.data || res
+    tableData.value = data.list || []
+    total.value = data.total || 0
+    if (data.stats) {
+      statistics.total = data.stats.total || 0
+      statistics.pending = data.stats.pending || 0
+      statistics.blocked = data.stats.blocked || 0
+    } else {
+      const all = data.list || []
+      statistics.total = data.total || all.length
+      statistics.pending = all.filter((r: Review) => r.status === 'pending').length
+      statistics.blocked = all.filter((r: Review) => r.status === 'blocked').length
     }
-    if (searchForm.rating !== '') {
-      filtered = filtered.filter(r => r.rating === Number(searchForm.rating))
-    }
-    if (searchForm.status) {
-      filtered = filtered.filter(r => r.status === searchForm.status)
-    }
-    total.value = filtered.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = filtered.slice(start, start + pageSize.value)
+  } catch {
+    ElMessage.error('获取评价列表失败')
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const handleSearch = () => {
@@ -125,20 +100,48 @@ const handleReset = () => {
   loadData()
 }
 
-const handleApprove = (row: Review) => {
-  row.status = 'approved'
-  ElMessage.success('评价已通过')
+const handleApprove = async (row: Review) => {
+  try {
+    await auditReview({ id: row.id, action: 'approve' })
+    ElMessage.success('评价已通过')
+    loadData()
+  } catch {
+    ElMessage.error('审核操作失败')
+  }
 }
 
-const handleBlock = (row: Review) => {
-  ElMessageBox.confirm('确定要屏蔽该评价吗？屏蔽后用户将无法查看此评价。', '确认屏蔽', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    row.status = 'blocked'
+const handleBlock = async (row: Review) => {
+  try {
+    await ElMessageBox.confirm('确定要屏蔽该评价吗？屏蔽后用户将无法查看此评价。', '确认屏蔽', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await auditReview({ id: row.id, action: 'block' })
     ElMessage.success('评价已屏蔽')
-  }).catch(() => {})
+    loadData()
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      ElMessage.error('屏蔽操作失败')
+    }
+  }
+}
+
+const handleDelete = async (row: Review) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该评价吗？删除后不可恢复。', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteReview(String(row.id))
+    ElMessage.success('评价已删除')
+    loadData()
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      ElMessage.error('删除操作失败')
+    }
+  }
 }
 
 const handleReply = (row: Review) => {
@@ -147,15 +150,20 @@ const handleReply = (row: Review) => {
   replyDialog.value = true
 }
 
-const submitReply = () => {
+const submitReply = async () => {
   if (!currentReview.value) return
   if (!replyContent.value.trim()) {
     ElMessage.warning('请输入回复内容')
     return
   }
-  currentReview.value.reply = replyContent.value
-  ElMessage.success('回复成功')
-  replyDialog.value = false
+  try {
+    await replyReview({ id: currentReview.value.id, content: replyContent.value })
+    ElMessage.success('回复成功')
+    replyDialog.value = false
+    loadData()
+  } catch {
+    ElMessage.error('回复操作失败')
+  }
 }
 
 const getStatusType = (status: string) => {
@@ -169,7 +177,6 @@ const getStatusLabel = (status: string) => {
 }
 
 onMounted(() => {
-  allReviews.value = mockReviews
   loadData()
 })
 </script>
@@ -296,7 +303,7 @@ onMounted(() => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column fixed="right" label="操作" width="210" align="center">
+        <el-table-column fixed="right" label="操作" width="260" align="center">
           <template #default="{ row }">
             <el-button v-if="row.status !== 'approved'" link type="success" size="small" @click="handleApprove(row)">
               <el-icon><Check /></el-icon>通过
@@ -306,6 +313,9 @@ onMounted(() => {
             </el-button>
             <el-button link type="primary" size="small" @click="handleReply(row)">
               回复
+            </el-button>
+            <el-button link type="danger" size="small" @click="handleDelete(row)">
+              <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
         </el-table-column>

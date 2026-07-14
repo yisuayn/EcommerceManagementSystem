@@ -329,13 +329,14 @@ import {
   RefreshLeft,
   Refresh
 } from '@element-plus/icons-vue'
+import { productApi } from '@/api/product'
 
 // 库存概览数据
 const overview = reactive({
-  totalStock: 12580,
-  lowStockCount: 8,
-  todayInbound: 1250,
-  todayOutbound: 890
+  totalStock: 0,
+  lowStockCount: 0,
+  todayInbound: 0,
+  todayOutbound: 0
 })
 
 // 搜索表单
@@ -347,58 +348,13 @@ const searchForm = reactive({
 })
 
 // 分类列表
-const categoryList = ref([
-  { id: 1, name: '手机数码' },
-  { id: 2, name: '服装鞋帽' },
-  { id: 3, name: '食品生鲜' }
-])
+const categoryList = ref<any[]>([])
 
 // 商品列表（用于入库出库选择）
-const productList = ref([
-  { id: 1, productName: 'iPhone 15', skuCode: 'SKU001', stock: 150 },
-  { id: 2, productName: '华为 Mate 60', skuCode: 'SKU002', stock: 200 },
-  { id: 3, productName: '小米 14', skuCode: 'SKU003', stock: 80 }
-])
+const productList = ref<any[]>([])
 
 // 库存列表数据
-const inventoryList = ref([
-  {
-    id: 1,
-    skuCode: 'SKU001',
-    productName: 'iPhone 15',
-    categoryName: '手机数码',
-    stock: 150,
-    minStock: 50,
-    maxStock: 500,
-    unit: '台',
-    costPrice: 5999,
-    lastUpdateTime: '2024-06-13 10:30:00'
-  },
-  {
-    id: 2,
-    skuCode: 'SKU002',
-    productName: '华为 Mate 60',
-    categoryName: '手机数码',
-    stock: 200,
-    minStock: 50,
-    maxStock: 500,
-    unit: '台',
-    costPrice: 6999,
-    lastUpdateTime: '2024-06-13 09:15:00'
-  },
-  {
-    id: 3,
-    skuCode: 'SKU003',
-    productName: '小米 14',
-    categoryName: '手机数码',
-    stock: 30,
-    minStock: 50,
-    maxStock: 300,
-    unit: '台',
-    costPrice: 3999,
-    lastUpdateTime: '2024-06-12 16:20:00'
-  }
-])
+const inventoryList = ref<any[]>([])
 
 // 表格相关
 const tableLoading = ref(false)
@@ -469,7 +425,8 @@ const logTotal = ref(0)
 const inventoryDialogVisible = ref(false)
 
 // 格式化数字
-const formatNumber = (num: number) => {
+const formatNumber = (num: number | null | undefined) => {
+  if (num === null || num === undefined) return '0'
   return num.toLocaleString()
 }
 
@@ -494,13 +451,35 @@ const refreshList = () => {
 }
 
 // 加载库存列表
-const loadInventoryList = () => {
+const loadInventoryList = async () => {
   tableLoading.value = true
-  // 模拟API请求
-  setTimeout(() => {
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchForm.productName) params.productName = searchForm.productName
+    if (searchForm.skuCode) params.skuCode = searchForm.skuCode
+    if (searchForm.categoryId) params.categoryId = searchForm.categoryId
+    if (searchForm.stockStatus) params.stockStatus = searchForm.stockStatus
+
+    const res = await productApi(params)
+    inventoryList.value = res.data.list || []
+    total.value = res.data.total || 0
+    // Also load product list for dropdowns
+    productList.value = res.data.products || []
+    categoryList.value = res.data.categories || []
+    if (res.data.overview) {
+      overview.totalStock = res.data.overview.totalStock || 0
+      overview.lowStockCount = res.data.overview.lowStockCount || 0
+      overview.todayInbound = res.data.overview.todayInbound || 0
+      overview.todayOutbound = res.data.overview.todayOutbound || 0
+    }
+  } catch (error) {
+    console.log(error)
+  } finally {
     tableLoading.value = false
-    ElMessage.success('数据已刷新')
-  }, 500)
+  }
 }
 
 // 表格选中变化
@@ -553,10 +532,22 @@ const submitInbound = async () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
-  }).then(() => {
-    ElMessage.success('入库成功')
-    inboundDialogVisible.value = false
-    loadInventoryList()
+  }).then(async () => {
+    try {
+      await productApi({
+        action: 'inbound',
+        productId: inboundForm.productId,
+        quantity: inboundForm.quantity,
+        price: inboundForm.price,
+        supplier: inboundForm.supplier,
+        remark: inboundForm.remark
+      })
+      ElMessage.success('入库成功')
+      inboundDialogVisible.value = false
+      loadInventoryList()
+    } catch (error) {
+      console.log(error)
+    }
   }).catch(() => { })
 }
 
@@ -588,10 +579,21 @@ const submitOutbound = async () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
-  }).then(() => {
-    ElMessage.success('出库成功')
-    outboundDialogVisible.value = false
-    loadInventoryList()
+  }).then(async () => {
+    try {
+      await productApi({
+        action: 'outbound',
+        productId: outboundForm.productId,
+        quantity: outboundForm.quantity,
+        type: outboundForm.type,
+        remark: outboundForm.remark
+      })
+      ElMessage.success('出库成功')
+      outboundDialogVisible.value = false
+      loadInventoryList()
+    } catch (error) {
+      console.log(error)
+    }
   }).catch(() => { })
 }
 
@@ -614,18 +616,26 @@ const batchOutbound = () => {
 }
 
 // 显示库存记录
-const showStockLog = (row: any) => {
-  stockLogList.value = [
-
-  ]
-  logTotal.value = 2
-  stockLogDialogVisible.value = true
+const showStockLog = async (row: any) => {
+  try {
+    const res = await productApi({ action: 'stockLog', productId: row.id, page: logCurrentPage.value, pageSize: logPageSize.value })
+    stockLogList.value = res.data.list || []
+    logTotal.value = res.data.total || 0
+    stockLogDialogVisible.value = true
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 // 加载库存记录
-const loadStockLog = () => {
-  // 模拟加载更多记录
-  console.log('加载库存记录')
+const loadStockLog = async () => {
+  try {
+    const res = await productApi({ action: 'stockLog', page: logCurrentPage.value, pageSize: logPageSize.value })
+    stockLogList.value = res.data.list || []
+    logTotal.value = res.data.total || 0
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 // 打开盘点对话框
@@ -638,7 +648,7 @@ const openInventoryDialog = () => {
 }
 
 // 提交盘点
-const submitInventory = () => {
+const submitInventory = async () => {
   const diffItems = inventoryList.value.filter(item => item.actualStock !== item.stock)
   if (diffItems.length === 0) {
     ElMessage.info('没有盘点差异')
@@ -650,10 +660,15 @@ const submitInventory = () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('盘点完成')
-    inventoryDialogVisible.value = false
-    loadInventoryList()
+  }).then(async () => {
+    try {
+      await productApi({ action: 'inventory', items: diffItems.map(item => ({ id: item.id, actualStock: item.actualStock })) })
+      ElMessage.success('盘点完成')
+      inventoryDialogVisible.value = false
+      loadInventoryList()
+    } catch (error) {
+      console.log(error)
+    }
   }).catch(() => { })
 }
 

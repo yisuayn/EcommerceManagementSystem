@@ -224,6 +224,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Refresh } from '@element-plus/icons-vue'
+import { getSeckillList, saveSeckill } from '@/api/marketing'
 
 // 时间场次
 const timeSlots = [
@@ -238,82 +239,13 @@ const timeSlots = [
 const currentTimeSlot = ref('morning2')
 
 // 秒杀商品列表
-const seckillProducts = ref([
-  {
-    id: 1,
-    name: 'iPhone 15 Pro Max',
-    image: 'https://picsum.photos/200/200?random=1',
-    seckillPrice: 7999,
-    originalPrice: 9999,
-    stock: 50,
-    soldCount: 150,
-    soldPercent: 75,
-    status: 'active',
-    startTime: Date.now(),
-    endTime: Date.now() + 3600000
-  },
-  {
-    id: 2,
-    name: '华为 Mate 60 Pro',
-    image: 'https://picsum.photos/200/200?random=2',
-    seckillPrice: 5999,
-    originalPrice: 6999,
-    stock: 30,
-    soldCount: 70,
-    soldPercent: 70,
-    status: 'active',
-    startTime: Date.now(),
-    endTime: Date.now() + 3600000
-  },
-  {
-    id: 3,
-    name: '小米 14 Ultra',
-    image: 'https://picsum.photos/200/200?random=3',
-    seckillPrice: 4999,
-    originalPrice: 6499,
-    stock: 0,
-    soldCount: 100,
-    soldPercent: 100,
-    status: 'ended',
-    startTime: Date.now() - 7200000,
-    endTime: Date.now() - 3600000
-  }
-])
+const seckillProducts = ref<any[]>([])
 
 // 活动列表
-const activityList = ref([
-  {
-    id: 1,
-    name: '618开门红',
-    timeSlot: 'morning2',
-    startTime: '2024-06-01 08:00:00',
-    endTime: '2024-06-01 12:00:00',
-    productCount: 10,
-    totalSales: 1250,
-    status: 'ended',
-    userLimit: 2,
-    products: []
-  },
-  {
-    id: 2,
-    name: '618狂欢节',
-    timeSlot: 'night',
-    startTime: '2024-06-18 20:00:00',
-    endTime: '2024-06-18 24:00:00',
-    productCount: 20,
-    totalSales: 0,
-    status: 'pending',
-    userLimit: 2,
-    products: []
-  }
-])
+const activityList = ref<any[]>([])
 
 // 所有商品
-const allProducts = ref([
-  { id: 1, name: 'iPhone 15 Pro Max', price: 9999 },
-  { id: 2, name: '华为 Mate 60 Pro', price: 6999 },
-  { id: 3, name: '小米 14 Ultra', price: 6499 }
-])
+const allProducts = ref<any[]>([])
 
 // 表格相关
 const tableLoading = ref(false)
@@ -386,8 +318,13 @@ const buyNow = (product: any) => {
 }
 
 // 加载秒杀商品
-const loadSeckillProducts = () => {
-  // 模拟加载
+const loadSeckillProducts = async () => {
+  try {
+    const res = await getSeckillList({ timeSlot: currentTimeSlot.value })
+    seckillProducts.value = res.data.list || []
+  } catch {
+    // 静默处理
+  }
 }
 
 // 打开新建对话框
@@ -455,9 +392,21 @@ const deleteActivity = (row: any) => {
 // 提交表单
 const submitForm = async () => {
   await formRef.value?.validate()
-  ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
-  dialogVisible.value = false
-  loadActivityList()
+  try {
+    await saveSeckill({
+      name: activityForm.name,
+      timeSlot: activityForm.timeSlot,
+      dateRange: activityForm.dateRange,
+      products: activityForm.products,
+      userLimit: activityForm.userLimit,
+      description: activityForm.description
+    })
+    ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
+    dialogVisible.value = false
+    loadActivityList()
+  } catch {
+    ElMessage.error(dialogType.value === 'create' ? '创建失败' : '更新失败')
+  }
 }
 
 // 关闭对话框
@@ -473,11 +422,26 @@ const refreshList = () => {
 }
 
 // 加载活动列表
-const loadActivityList = () => {
+const loadActivityList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    const res = await getSeckillList(params)
+    activityList.value = res.data.list || []
+    total.value = res.data.total || 0
+    // 从活动列表中提取商品数据用于商品卡片展示（取当前场次的商品）
+    const currentActivity = activityList.value.find((a: any) => a.timeSlot === currentTimeSlot.value)
+    if (currentActivity && currentActivity.products) {
+      seckillProducts.value = currentActivity.products
+    }
+  } catch {
+    ElMessage.error('获取活动列表失败')
+  } finally {
     tableLoading.value = false
-  }, 500)
+  }
 }
 
 const handleSizeChange = (val: number) => {

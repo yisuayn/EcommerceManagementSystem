@@ -114,105 +114,13 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
+import { getRoleList, saveRole, getPermissionTree, saveRolePermission } from '@/api/system'
 
 // 角色列表
-const roleList = ref([
-  {
-    id: 1,
-    name: '超级管理员',
-    code: 'super_admin',
-    sort: 1,
-    status: 1,
-    remark: '拥有所有权限'
-  },
-  {
-    id: 2,
-    name: '商品管理员',
-    code: 'product_admin',
-    sort: 2,
-    status: 1,
-    remark: '商品管理权限'
-  },
-  {
-    id: 3,
-    name: '订单管理员',
-    code: 'order_admin',
-    sort: 3,
-    status: 1,
-    remark: '订单管理权限'
-  },
-  {
-    id: 4,
-    name: '财务管理员',
-    code: 'finance_admin',
-    sort: 4,
-    status: 0,
-    remark: '财务相关权限'
-  }
-])
+const roleList = ref<any[]>([])
 
 // 权限树数据
-const permissionTree = ref([
-  {
-    id: 1,
-    name: '数据看板',
-    path: '/dashboard',
-    children: [
-      { id: 101, name: '查看数据', path: '/dashboard/view', permission: 'dashboard:view' },
-      { id: 102, name: '导出数据', path: '/dashboard/export', permission: 'dashboard:export' }
-    ]
-  },
-  {
-    id: 2,
-    name: '商品管理',
-    path: '/product',
-    children: [
-      { id: 201, name: '商品列表', path: '/product/list', permission: 'product:list' },
-      { id: 202, name: '商品发布', path: '/product/publish', permission: 'product:publish' },
-      { id: 203, name: '库存管理', path: '/product/stock', permission: 'product:stock' },
-      { id: 204, name: '分类管理', path: '/product/category', permission: 'product:category' }
-    ]
-  },
-  {
-    id: 3,
-    name: '订单管理',
-    path: '/order',
-    children: [
-      { id: 301, name: '订单列表', path: '/order/list', permission: 'order:list' },
-      { id: 302, name: '订单处理', path: '/order/process', permission: 'order:process' },
-      { id: 303, name: '售后管理', path: '/order/after-sale', permission: 'order:after-sale' },
-      { id: 304, name: '物流管理', path: '/order/logistics', permission: 'order:logistics' }
-    ]
-  },
-  {
-    id: 4,
-    name: '营销中心',
-    path: '/marketing',
-    children: [
-      { id: 401, name: '优惠券管理', path: '/marketing/coupon', permission: 'marketing:coupon' },
-      { id: 402, name: '秒杀活动', path: '/marketing/seckill', permission: 'marketing:seckill' },
-      { id: 403, name: '促销活动', path: '/marketing/promotion', permission: 'marketing:promotion' }
-    ]
-  },
-  {
-    id: 5,
-    name: '系统设置',
-    path: '/system',
-    children: [
-      { id: 501, name: '管理员管理', path: '/system/admin', permission: 'system:admin' },
-      { id: 502, name: '角色权限', path: '/system/role', permission: 'system:role' },
-      { id: 503, name: '操作日志', path: '/system/log', permission: 'system:log' }
-    ]
-  }
-])
-
-// 角色权限映射
-const rolePermissions: Record<number, number[]> = {
-  1: [101, 102, 201, 202, 203, 204, 301, 302, 303, 304, 401, 402, 403, 501, 502, 503],
-  2: [201, 202, 203, 204],
-  3: [301, 302, 303, 304],
-  4: [401, 402, 403]
-}
+const permissionTree = ref<any[]>([])
 
 // 当前选中的角色
 const currentRole = ref<any>(null)
@@ -223,7 +131,7 @@ const saving = ref(false)
 // 角色搜索
 const roleSearch = ref('')
 const rolePage = ref(1)
-const roleTotal = ref(roleList.value.length)
+const roleTotal = ref(0)
 
 const filteredRoleList = computed(() => {
   let list = roleList.value
@@ -256,9 +164,15 @@ const roleRules = {
 }
 
 // 选择角色
-const selectRole = (role: any) => {
+const selectRole = async (role: any) => {
   currentRole.value = role
-  checkedKeys.value = rolePermissions[role.id] || []
+  try {
+    const res = await getPermissionTree()
+    permissionTree.value = res.data.tree || []
+    checkedKeys.value = res.data.checkedKeys || []
+  } catch {
+    ElMessage.error('获取权限树失败')
+  }
 }
 
 // 保存权限
@@ -267,10 +181,17 @@ const savePermissions = async () => {
   const permissions = checkedNodes.map((node: any) => node.permission).filter(Boolean)
 
   saving.value = true
-  setTimeout(() => {
+  try {
+    await saveRolePermission({
+      roleId: currentRole.value.id,
+      permissionKeys: permissions
+    })
     ElMessage.success(`权限保存成功，共 ${permissions.length} 个权限`)
+  } catch {
+    ElMessage.error('权限保存失败')
+  } finally {
     saving.value = false
-  }, 500)
+  }
 }
 
 // 打开新增对话框
@@ -309,23 +230,42 @@ const deleteRole = (role: any) => {
 // 提交表单
 const submitForm = async () => {
   await formRef.value?.validate()
-  ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
-  dialogVisible.value = false
-  refreshList()
+  try {
+    await saveRole({
+      id: roleForm.id || undefined,
+      name: roleForm.name,
+      code: roleForm.code,
+      sort: roleForm.sort,
+      status: roleForm.status,
+      remark: roleForm.remark
+    })
+    ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
+    dialogVisible.value = false
+    refreshList()
+  } catch {
+    ElMessage.error(dialogType.value === 'create' ? '创建失败' : '更新失败')
+  }
 }
 
 const closeDialog = () => {
   formRef.value?.resetFields()
 }
 
-const refreshList = () => {
-  // 刷新角色列表
+const refreshList = async () => {
+  try {
+    const res = await getRoleList({})
+    roleList.value = res.data.list || []
+    roleTotal.value = roleList.value.length
+  } catch {
+    ElMessage.error('获取角色列表失败')
+  }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await refreshList()
   // 默认选中第一个角色
   if (roleList.value.length > 0) {
-    selectRole(roleList.value[0])
+    await selectRole(roleList.value[0])
   }
 })
 </script>

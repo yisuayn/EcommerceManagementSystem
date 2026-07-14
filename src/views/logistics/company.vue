@@ -145,6 +145,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search, RefreshLeft } from '@element-plus/icons-vue'
+import { getCompanyList, saveCompany } from '@/api/logistics'
 
 // 搜索表单
 const searchForm = reactive({
@@ -153,84 +154,13 @@ const searchForm = reactive({
 })
 
 // 公司列表数据
-const companyList = ref([
-  {
-    id: 1,
-    name: '顺丰速运',
-    code: 'SF',
-    phone: '95338',
-    website: 'https://www.sf-express.com',
-    trackingUrl: 'https://www.sf-express.com/cn/sc/dynamic-search/result/{nu}',
-    sortOrder: 0,
-    status: 1
-  },
-  {
-    id: 2,
-    name: '圆通速递',
-    code: 'YTO',
-    phone: '95554',
-    website: 'https://www.yto.net.cn',
-    trackingUrl: 'https://www.yto.net.cn/gd/query/{nu}',
-    sortOrder: 1,
-    status: 1
-  },
-  {
-    id: 3,
-    name: '中通快递',
-    code: 'ZTO',
-    phone: '95311',
-    website: 'https://www.zto.com',
-    trackingUrl: 'https://www.zto.com/express/query/{nu}',
-    sortOrder: 2,
-    status: 1
-  },
-  {
-    id: 4,
-    name: '韵达快递',
-    code: 'YD',
-    phone: '95546',
-    website: 'https://www.yundaex.com',
-    trackingUrl: 'https://www.yundaex.com/query/waybill/{nu}',
-    sortOrder: 3,
-    status: 1
-  },
-  {
-    id: 5,
-    name: '京东物流',
-    code: 'JD',
-    phone: '950616',
-    website: 'https://www.jdl.com',
-    trackingUrl: 'https://www.jdl.com/express/query/{nu}',
-    sortOrder: 4,
-    status: 1
-  },
-  {
-    id: 6,
-    name: '中国邮政',
-    code: 'EMS',
-    phone: '11183',
-    website: 'https://www.ems.com.cn',
-    trackingUrl: 'https://www.ems.com.cn/query/{nu}',
-    sortOrder: 5,
-    status: 0
-  },
-  {
-    id: 7,
-    name: '德邦物流',
-    code: 'DB',
-    phone: '95353',
-    website: 'https://www.deppon.com',
-    trackingUrl: 'https://www.deppon.com/waybill/query/{nu}',
-    sortOrder: 6,
-    status: 1
-  }
-])
+const companyList = ref<any[]>([])
 
 // 表格相关
 const tableLoading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(100)
+const total = ref(0)
 
 // 抽屉相关
 const drawerVisible = ref(false)
@@ -274,11 +204,20 @@ const refreshList = () => {
   loadCompanyList()
 }
 
-const loadCompanyList = () => {
+const loadCompanyList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params: any = { page: currentPage.value, pageSize: pageSize.value }
+    if (searchForm.name) params.name = searchForm.name
+    if (searchForm.status !== '') params.status = searchForm.status
+    const res = await getCompanyList(params)
+    companyList.value = res.data.list || res.data.records || []
+    total.value = res.data.total || 0
+  } catch (e) {
+    console.log(e)
+  } finally {
     tableLoading.value = false
-  }, 500)
+  }
 }
 
 const handleSizeChange = (val: number) => {
@@ -340,9 +279,14 @@ const deleteCompany = (row: any) => {
 // 提交表单
 const submitForm = async () => {
   await formRef.value?.validate()
-  ElMessage.success(drawerType.value === 'create' ? '创建成功' : '更新成功')
-  drawerVisible.value = false
-  loadCompanyList()
+  try {
+    await saveCompany(companyForm)
+    ElMessage.success(drawerType.value === 'create' ? '创建成功' : '更新成功')
+    drawerVisible.value = false
+    loadCompanyList()
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 const closeDrawer = () => {

@@ -145,7 +145,7 @@
         <el-form-item label="商品主图" prop="mainImage" required>
           <div class="upload-container">
             <el-upload :action="uploadUrl" :headers="uploadHeaders" list-type="picture-card" :limit="5"
-              :on-success="handleMainImageSuccess" :on-remove="handleMainImageRemove" :before-upload="beforeUpload">
+              :http-request="handleUpload" :on-remove="handleMainImageRemove" :before-upload="beforeUpload">
               <el-icon>
                 <Plus />
               </el-icon>
@@ -358,6 +358,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
+import { publishProduct } from '@/api/product'
 
 const router = useRouter()
 const formRef = ref()
@@ -514,15 +515,23 @@ const beforeUpload = (file: File) => {
   return true
 }
 
-// 主图上传成功
-const handleMainImageSuccess = (response: any) => {
-  formData.mainImage.push(response.data.url)
+// 自定义上传（本地读取为 base64，不依赖后端）
+const handleUpload = (options: any) => {
+  const file = options.file
+  const reader = new FileReader()
+  reader.onload = (e: any) => {
+    formData.mainImage.push(e.target.result)
+    ElMessage.success('上传成功')
+  }
+  reader.onerror = () => {
+    ElMessage.error('图片读取失败')
+  }
+  reader.readAsDataURL(file)
 }
 
 // 主图删除
-const handleMainImageRemove = (file: any) => {
-  const url = file.response?.data?.url || file.url
-  const index = formData.mainImage.indexOf(url)
+const handleMainImageRemove = (uploadFile: any) => {
+  const index = formData.mainImage.indexOf(uploadFile.url)
   if (index > -1) {
     formData.mainImage.splice(index, 1)
   }
@@ -592,7 +601,7 @@ const handleSubmit = async () => {
     console.log('提交数据:', submitData)
 
     // 调用API
-    // await productPublishApi(submitData)
+    await publishProduct(submitData)
 
     ElMessage.success('商品发布成功！')
     setTimeout(() => {

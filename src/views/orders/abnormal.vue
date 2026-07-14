@@ -375,13 +375,14 @@ import {
   Search,
   RefreshLeft
 } from '@element-plus/icons-vue'
+import { getAfterSaleList, auditAfterSale } from '@/api/order'
 
 // 统计数据
 const statistics = reactive({
-  total: 1258,
-  pending: 45,
-  processing: 68,
-  completed: 1145
+  total: 0,
+  pending: 0,
+  processing: 0,
+  completed: 0
 })
 
 // 搜索表单
@@ -395,86 +396,7 @@ const searchForm = reactive({
 })
 
 // 售后列表数据
-const afterSaleList = ref([
-  {
-    id: 1,
-    afterSaleNo: 'AS202406130001',
-    orderNo: 'ORD202406130001',
-    createTime: '2024-06-13 10:30:00',
-    buyerName: '张三',
-    phone: '138****1234',
-    productName: 'iPhone 15 Pro Max 256GB',
-    skuCode: 'SKU001',
-    price: 9999,
-    quantity: 1,
-    refundAmount: 9999,
-    type: 'refund',
-    status: 'pending',
-    reason: '商品质量问题',
-    description: '手机屏幕有划痕，无法正常使用',
-    images: ['https://picsum.photos/200/150?random=1'],
-    auditRemark: '',
-    returnLogisticsCompany: null,
-    returnTrackingNo: null,
-    operationLogs: [
-      { time: '2024-06-13 10:30:00', content: '买家提交售后申请' }
-    ]
-  },
-  {
-    id: 2,
-    afterSaleNo: 'AS202406130002',
-    orderNo: 'ORD202406130002',
-    createTime: '2024-06-13 09:15:00',
-    buyerName: '李四',
-    phone: '139****5678',
-    productName: '华为 Mate 60 Pro',
-    skuCode: 'SKU002',
-    price: 6999,
-    quantity: 1,
-    refundAmount: 6999,
-    type: 'return',
-    status: 'waiting_return',
-    reason: '商品与描述不符',
-    description: '收到的商品颜色与下单不一致',
-    images: ['https://picsum.photos/200/150?random=2'],
-    auditRemark: '同意退货，请尽快寄回商品',
-    returnLogisticsCompany: '顺丰速运',
-    returnTrackingNo: 'SF9876543210',
-    operationLogs: [
-      { time: '2024-06-13 09:15:00', content: '买家提交售后申请' },
-      { time: '2024-06-13 10:00:00', content: '审核通过，等待买家发货' },
-      { time: '2024-06-13 14:00:00', content: '买家已发货，物流单号：SF9876543210' }
-    ]
-  },
-  {
-    id: 3,
-    afterSaleNo: 'AS202406130003',
-    orderNo: 'ORD202406130003',
-    createTime: '2024-06-12 16:00:00',
-    buyerName: '王五',
-    phone: '152****9012',
-    productName: '小米 14 Ultra',
-    skuCode: 'SKU003',
-    price: 6499,
-    quantity: 1,
-    refundAmount: 6499,
-    type: 'exchange',
-    status: 'completed',
-    reason: '尺寸不合适',
-    description: '鞋子尺码偏大，需要换小一码',
-    images: [],
-    auditRemark: '同意换货',
-    returnLogisticsCompany: '中通快递',
-    returnTrackingNo: 'ZT1234567890',
-    operationLogs: [
-      { time: '2024-06-12 16:00:00', content: '买家提交售后申请' },
-      { time: '2024-06-12 17:00:00', content: '审核通过' },
-      { time: '2024-06-13 09:00:00', content: '买家已发货' },
-      { time: '2024-06-13 15:00:00', content: '商家已收货并换货' },
-      { time: '2024-06-13 16:00:00', content: '售后完成' }
-    ]
-  }
-])
+const afterSaleList = ref<any[]>([])
 
 // 表格相关
 const tableLoading = ref(false)
@@ -590,12 +512,37 @@ const refreshList = () => {
 }
 
 // 加载售后列表
-const loadAfterSaleList = () => {
+const loadAfterSaleList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchForm.afterSaleNo) params.afterSaleNo = searchForm.afterSaleNo
+    if (searchForm.orderNo) params.orderNo = searchForm.orderNo
+    if (searchForm.buyerName) params.buyerName = searchForm.buyerName
+    if (searchForm.type) params.type = searchForm.type
+    if (searchForm.status) params.status = searchForm.status
+    if (searchForm.dateRange) {
+      params.startDate = searchForm.dateRange[0]
+      params.endDate = searchForm.dateRange[1]
+    }
+
+    const res = await getAfterSaleList(params)
+    afterSaleList.value = res.data.list || []
+    total.value = res.data.total || 0
+    if (res.data.statistics) {
+      statistics.total = res.data.statistics.total || 0
+      statistics.pending = res.data.statistics.pending || 0
+      statistics.processing = res.data.statistics.processing || 0
+      statistics.completed = res.data.statistics.completed || 0
+    }
+  } catch (error) {
+    console.log(error)
+  } finally {
     tableLoading.value = false
-    ElMessage.success('数据已刷新')
-  }, 500)
+  }
 }
 
 // 表格选中变化
@@ -637,20 +584,40 @@ const rejectAfterSale = (row: any) => {
 }
 
 // 提交审核
-const submitAudit = () => {
+const submitAudit = async () => {
   if (auditType.value === 'approve') {
-    ElMessage.success('审核通过')
-    if (currentAfterSale.value) {
-      currentAfterSale.value.status = 'approved'
+    try {
+      await auditAfterSale({
+        id: currentAfterSale.value?.id,
+        action: 'approve',
+        remark: auditForm.remark
+      })
+      ElMessage.success('审核通过')
+      if (currentAfterSale.value) {
+        currentAfterSale.value.status = 'approved'
+      }
+    } catch (error) {
+      console.log(error)
+      return
     }
   } else {
     if (!auditForm.remark) {
       ElMessage.warning('请填写拒绝原因')
       return
     }
-    ElMessage.success('已拒绝申请')
-    if (currentAfterSale.value) {
-      currentAfterSale.value.status = 'rejected'
+    try {
+      await auditAfterSale({
+        id: currentAfterSale.value?.id,
+        action: 'reject',
+        remark: auditForm.remark
+      })
+      ElMessage.success('已拒绝申请')
+      if (currentAfterSale.value) {
+        currentAfterSale.value.status = 'rejected'
+      }
+    } catch (error) {
+      console.log(error)
+      return
     }
   }
   auditDialogVisible.value = false

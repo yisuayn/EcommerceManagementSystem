@@ -101,7 +101,7 @@
 
     <!-- 退款列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table :data="filteredList" border stripe v-loading="tableLoading">
+      <el-table :data="tableData" border stripe v-loading="tableLoading">
         <el-table-column prop="refundNo" label="退款编号" width="170" />
         <el-table-column prop="orderNo" label="订单号" width="170" />
         <el-table-column prop="member" label="会员" width="90" align="center" />
@@ -183,10 +183,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Search, RefreshLeft, Clock, CircleCheck, SuccessFilled, CircleClose } from '@element-plus/icons-vue'
 import type { FormInstance } from 'element-plus'
+import { getRefundList, auditRefund } from '@/api/finance'
 
 interface RefundItem {
   id: number
@@ -204,11 +205,13 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
+const tableData = ref<RefundItem[]>([])
+
 const stats = reactive({
-  pending: 12,
-  approved: 8,
-  completed: 156,
-  rejected: 5
+  pending: 0,
+  approved: 0,
+  completed: 0,
+  rejected: 0
 })
 
 const searchForm = reactive({
@@ -218,43 +221,35 @@ const searchForm = reactive({
   status: ''
 })
 
-const allRefunds = ref<RefundItem[]>([
-  { id: 1, refundNo: 'RF20250701001', orderNo: 'ORD20250630001', member: '张三', amount: 599, reason: '商品质量问题，收到后发现屏幕有划痕', applyTime: '2025-07-01 09:15:23', status: 'pending' },
-  { id: 2, refundNo: 'RF20250701002', orderNo: 'ORD20250630002', member: '李四', amount: 128, reason: '买错了，不想要了', applyTime: '2025-07-01 10:32:45', status: 'pending' },
-  { id: 3, refundNo: 'RF20250701003', orderNo: 'ORD20250629001', member: '王五', amount: 2399, reason: '商品与描述不符，颜色有差异', applyTime: '2025-07-01 11:05:12', status: 'approved' },
-  { id: 4, refundNo: 'RF20250701004', orderNo: 'ORD20250628001', member: '赵六', amount: 45, reason: '物流太慢，已经不需要了', applyTime: '2025-07-01 14:22:18', status: 'completed' },
-  { id: 5, refundNo: 'RF20250630001', orderNo: 'ORD20250627001', member: '孙七', amount: 880, reason: '收到商品破损，包装完好但内部破损', applyTime: '2025-06-30 08:10:33', status: 'pending' },
-  { id: 6, refundNo: 'RF20250630002', orderNo: 'ORD20250626001', member: '周八', amount: 159, reason: '重复下单了', applyTime: '2025-06-30 10:45:09', status: 'pending' },
-  { id: 7, refundNo: 'RF20250630003', orderNo: 'ORD20250625001', member: '吴九', amount: 3299, reason: '质量问题，无法正常使用', applyTime: '2025-06-30 13:20:55', status: 'approved' },
-  { id: 8, refundNo: 'RF20250629001', orderNo: 'ORD20250624001', member: '郑十', amount: 69.9, reason: '尺码不合适', applyTime: '2025-06-29 09:30:12', status: 'rejected' },
-  { id: 9, refundNo: 'RF20250629002', orderNo: 'ORD20250623001', member: '张三', amount: 350, reason: '商品有异味', applyTime: '2025-06-29 15:42:38', status: 'completed' },
-  { id: 10, refundNo: 'RF20250628001', orderNo: 'ORD20250622001', member: '李四', amount: 1299, reason: '少发了配件', applyTime: '2025-06-28 11:05:07', status: 'completed' },
-  { id: 11, refundNo: 'RF20250628002', orderNo: 'ORD20250621001', member: '王五', amount: 230, reason: '商品价格降价了，申请差价退款', applyTime: '2025-06-28 16:18:44', status: 'rejected' },
-  { id: 12, refundNo: 'RF20250627001', orderNo: 'ORD20250620001', member: '赵六', amount: 560, reason: '收到商品有使用痕迹', applyTime: '2025-06-27 10:22:19', status: 'pending' },
-  { id: 13, refundNo: 'RF20250627002', orderNo: 'ORD20250619001', member: '孙七', amount: 1899, reason: '商品功能异常，按键不灵敏', applyTime: '2025-06-27 14:30:01', status: 'approved' },
-  { id: 14, refundNo: 'RF20250626001', orderNo: 'ORD20250618001', member: '周八', amount: 89.9, reason: '不想要了，未拆封', applyTime: '2025-06-26 09:15:33', status: 'completed' },
-  { id: 15, refundNo: 'RF20250625001', orderNo: 'ORD20250617001', member: '吴九', amount: 4500, reason: '商品严重质量问题，要求退款', applyTime: '2025-06-25 11:40:22', status: 'completed' },
-  { id: 16, refundNo: 'RF20250624001', orderNo: 'ORD20250616001', member: '郑十', amount: 120, reason: '配送错误，商品不对', applyTime: '2025-06-24 15:55:08', status: 'rejected' }
-])
+const computeStats = (list: RefundItem[]) => {
+  stats.pending = list.filter(item => item.status === 'pending').length
+  stats.approved = list.filter(item => item.status === 'approved').length
+  stats.completed = list.filter(item => item.status === 'completed').length
+  stats.rejected = list.filter(item => item.status === 'rejected').length
+}
 
-const filteredList = computed(() => {
-  let list = allRefunds.value
-  if (searchForm.refundNo) {
-    list = list.filter(item => item.refundNo.includes(searchForm.refundNo))
+const fetchData = async () => {
+  tableLoading.value = true
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchForm.refundNo) params.refundNo = searchForm.refundNo
+    if (searchForm.orderNo) params.orderNo = searchForm.orderNo
+    if (searchForm.member) params.member = searchForm.member
+    if (searchForm.status) params.status = searchForm.status
+    const res = await getRefundList(params)
+    const data = res.data || res
+    tableData.value = data.list || []
+    total.value = data.total || 0
+    computeStats(data.list || [])
+  } catch {
+    ElMessage.error('获取退款列表失败')
+  } finally {
+    tableLoading.value = false
   }
-  if (searchForm.orderNo) {
-    list = list.filter(item => item.orderNo.includes(searchForm.orderNo))
-  }
-  if (searchForm.member) {
-    list = list.filter(item => item.member.includes(searchForm.member))
-  }
-  if (searchForm.status) {
-    list = list.filter(item => item.status === searchForm.status)
-  }
-  total.value = list.length
-  const start = (currentPage.value - 1) * pageSize.value
-  return list.slice(start, start + pageSize.value)
-})
+}
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
@@ -308,19 +303,19 @@ const submitReview = async () => {
   }
   await reviewFormRef.value?.validate()
   if (currentRefund.value) {
-    if (reviewForm.result === 'pass') {
-      currentRefund.value.status = 'approved'
-      stats.pending--
-      stats.approved++
-      ElMessage.success('审核通过，等待确认退款')
-    } else {
-      currentRefund.value.status = 'rejected'
-      stats.pending--
-      stats.rejected++
-      ElMessage.success('已拒绝退款申请')
+    try {
+      await auditRefund({
+        id: currentRefund.value.id,
+        action: reviewForm.result === 'pass' ? 'approve' : 'reject',
+        remark: reviewForm.remark
+      })
+      ElMessage.success(reviewForm.result === 'pass' ? '审核通过，等待确认退款' : '已拒绝退款申请')
+      reviewDialogVisible.value = false
+      fetchData()
+    } catch {
+      ElMessage.error('审核操作失败')
     }
   }
-  reviewDialogVisible.value = false
 }
 
 const closeReviewDialog = () => {
@@ -338,11 +333,14 @@ const confirmRefund = (row: RefundItem) => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
-    row.status = 'completed'
-    stats.approved--
-    stats.completed++
-    ElMessage.success('退款成功')
+  ).then(async () => {
+    try {
+      await auditRefund({ id: row.id, action: 'complete' })
+      ElMessage.success('退款成功')
+      fetchData()
+    } catch {
+      ElMessage.error('退款操作失败')
+    }
   }).catch(() => {})
 }
 
@@ -355,16 +353,20 @@ const rejectRefund = (row: RefundItem) => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
-    row.status = 'rejected'
-    stats.approved--
-    stats.rejected++
-    ElMessage.success('已拒绝退款')
+  ).then(async () => {
+    try {
+      await auditRefund({ id: row.id, action: 'reject' })
+      ElMessage.success('已拒绝退款')
+      fetchData()
+    } catch {
+      ElMessage.error('拒绝操作失败')
+    }
   }).catch(() => {})
 }
 
 const handleSearch = () => {
   currentPage.value = 1
+  fetchData()
 }
 
 const resetSearch = () => {
@@ -373,27 +375,26 @@ const resetSearch = () => {
   searchForm.member = ''
   searchForm.status = ''
   currentPage.value = 1
+  fetchData()
 }
 
 const refreshList = () => {
-  tableLoading.value = true
-  setTimeout(() => {
-    tableLoading.value = false
-    ElMessage.success('已刷新')
-  }, 500)
+  fetchData()
 }
 
 const handleSizeChange = (val: number) => {
   pageSize.value = val
+  currentPage.value = 1
+  fetchData()
 }
 
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
+  fetchData()
 }
 
 onMounted(() => {
-  tableLoading.value = false
-  total.value = allRefunds.value.length
+  fetchData()
 })
 </script>
 

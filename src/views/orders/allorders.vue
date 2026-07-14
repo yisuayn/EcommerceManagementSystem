@@ -364,13 +364,14 @@ import {
   Search,
   RefreshLeft
 } from '@element-plus/icons-vue'
+import { getOrderList, shipOrder } from '@/api/order'
 
 // 统计数据
 const statistics = reactive({
-  total: 12580,
-  pending: 1250,
-  shipped: 890,
-  completed: 9850
+  total: 0,
+  pending: 0,
+  shipped: 0,
+  completed: 0
 })
 
 // 搜索表单
@@ -384,108 +385,7 @@ const searchForm = reactive({
 })
 
 // 订单列表数据
-const orderList = ref([
-  {
-    id: 1,
-    orderNo: 'ORD202406130001',
-    createTime: '2024-06-13 10:30:00',
-    buyerName: '张三',
-    phone: '138****1234',
-    address: '北京市朝阳区xxx街道xxx号',
-    productName: 'iPhone 15 Pro Max 256GB',
-    quantity: 1,
-    totalAmount: 9999,
-    productAmount: 9999,
-    shippingFee: 0,
-    discount: 0,
-    payMethod: 'wechat',
-    status: 'pending',
-    remark: '请尽快发货',
-    products: [
-      {
-        productName: 'iPhone 15 Pro Max 256GB',
-        skuCode: 'SKU001',
-        price: 9999,
-        quantity: 1,
-        total: 9999
-      }
-    ],
-    payTime: null,
-    payNo: null,
-    logisticsCompany: null,
-    trackingNo: null,
-    trackingInfo: []
-  },
-  {
-    id: 2,
-    orderNo: 'ORD202406130002',
-    createTime: '2024-06-13 09:15:00',
-    buyerName: '李四',
-    phone: '139****5678',
-    address: '上海市浦东新区xxx路xxx号',
-    productName: '华为 Mate 60 Pro',
-    quantity: 2,
-    totalAmount: 13998,
-    productAmount: 13998,
-    shippingFee: 0,
-    discount: 0,
-    payMethod: 'alipay',
-    status: 'shipped',
-    remark: '',
-    products: [
-      {
-        productName: '华为 Mate 60 Pro',
-        skuCode: 'SKU002',
-        price: 6999,
-        quantity: 2,
-        total: 13998
-      }
-    ],
-    payTime: '2024-06-13 09:20:00',
-    payNo: 'PAY202406130001',
-    logisticsCompany: '顺丰速运',
-    trackingNo: 'SF1234567890',
-    trackingInfo: [
-      { time: '2024-06-13 14:00:00', content: '您的订单已发货' },
-      { time: '2024-06-13 10:00:00', content: '商家正在处理订单' }
-    ]
-  },
-  {
-    id: 3,
-    orderNo: 'ORD202406130003',
-    createTime: '2024-06-13 08:00:00',
-    buyerName: '王五',
-    phone: '152****9012',
-    address: '广州市天河区xxx大道xxx号',
-    productName: '小米 14 Ultra',
-    quantity: 1,
-    totalAmount: 6499,
-    productAmount: 6499,
-    shippingFee: 0,
-    discount: 0,
-    payMethod: 'wechat',
-    status: 'completed',
-    remark: '',
-    products: [
-      {
-        productName: '小米 14 Ultra',
-        skuCode: 'SKU003',
-        price: 6499,
-        quantity: 1,
-        total: 6499
-      }
-    ],
-    payTime: '2024-06-13 08:05:00',
-    payNo: 'PAY202406130002',
-    logisticsCompany: '中通快递',
-    trackingNo: 'ZT1234567890',
-    trackingInfo: [
-      { time: '2024-06-13 16:00:00', content: '已签收' },
-      { time: '2024-06-13 14:00:00', content: '派送中' },
-      { time: '2024-06-13 10:00:00', content: '已发货' }
-    ]
-  }
-])
+const orderList = ref<any[]>([])
 
 // 表格相关
 const tableLoading = ref(false)
@@ -597,13 +497,37 @@ const refreshList = () => {
 }
 
 // 加载订单列表
-const loadOrderList = () => {
+const loadOrderList = async () => {
   tableLoading.value = true
-  // 模拟API请求
-  setTimeout(() => {
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchForm.orderNo) params.orderNo = searchForm.orderNo
+    if (searchForm.productName) params.productName = searchForm.productName
+    if (searchForm.buyerName) params.buyerName = searchForm.buyerName
+    if (searchForm.status) params.status = searchForm.status
+    if (searchForm.payMethod) params.payMethod = searchForm.payMethod
+    if (searchForm.dateRange) {
+      params.startDate = searchForm.dateRange[0]
+      params.endDate = searchForm.dateRange[1]
+    }
+
+    const res = await getOrderList(params)
+    orderList.value = res.data.list || []
+    total.value = res.data.total || 0
+    if (res.data.statistics) {
+      statistics.total = res.data.statistics.total || 0
+      statistics.pending = res.data.statistics.pending || 0
+      statistics.shipped = res.data.statistics.shipped || 0
+      statistics.completed = res.data.statistics.completed || 0
+    }
+  } catch (error) {
+    console.log(error)
+  } finally {
     tableLoading.value = false
-    ElMessage.success('数据已刷新')
-  }, 500)
+  }
 }
 
 // 表格选中变化
@@ -658,15 +582,25 @@ const submitShip = async () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
-  }).then(() => {
-    ElMessage.success('发货成功')
-    shipDialogVisible.value = false
-    if (currentOrder.value) {
-      currentOrder.value.status = 'delivering'
-      currentOrder.value.logisticsCompany = shipForm.logisticsCompany
-      currentOrder.value.trackingNo = shipForm.trackingNo
+  }).then(async () => {
+    try {
+      await shipOrder({
+        orderId: currentOrder.value?.id,
+        logisticsCompany: shipForm.logisticsCompany,
+        trackingNo: shipForm.trackingNo,
+        remark: shipForm.remark
+      })
+      ElMessage.success('发货成功')
+      shipDialogVisible.value = false
+      if (currentOrder.value) {
+        currentOrder.value.status = 'delivering'
+        currentOrder.value.logisticsCompany = shipForm.logisticsCompany
+        currentOrder.value.trackingNo = shipForm.trackingNo
+      }
+      loadOrderList()
+    } catch (error) {
+      console.log(error)
     }
-    loadOrderList()
   }).catch(() => { })
 }
 

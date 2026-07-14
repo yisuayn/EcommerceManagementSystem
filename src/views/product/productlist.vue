@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive } from "vue"
 import type { ComponentSize, FormInstance, FormRules } from 'element-plus'
-import { productApi } from "@/api/product"
+import { ElMessage } from 'element-plus'
+import { productApi, saveProduct } from "@/api/product"
 
 interface User {
   id: string
@@ -47,6 +48,7 @@ const pageSize = ref(15) // 改成和接口一致
 const size = ref<ComponentSize>('default')
 const disabled = ref(false)
 const drawer = ref(false)
+const saveLoading = ref(false)
 
 const handleSizeChange = (val: number) => {
   pageSize.value = val
@@ -113,6 +115,23 @@ const formRules: FormRules = {
     { required: true, message: '请输入库存', trigger: 'blur' },
     { type: 'number', min: 0, message: '库存不能为负数', trigger: 'blur' }
   ]
+}
+
+// 保存商品
+const handleSave = async () => {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+  saveLoading.value = true
+  try {
+    await saveProduct(formData)
+    ElMessage.success('保存成功')
+    drawer.value = false
+    getproductlist(currentPage.value, pageSize.value)
+  } catch (error) {
+    console.log(error)
+  } finally {
+    saveLoading.value = false
+  }
 }
 </script>
 
@@ -262,7 +281,7 @@ const formRules: FormRules = {
         <!-- 底部按钮 -->
         <div class="drawer-footer">
           <el-button @click="drawer = false">取消</el-button>
-          <el-button type="primary">
+          <el-button type="primary" :loading="saveLoading" @click="handleSave">
             保存
           </el-button>
         </div>

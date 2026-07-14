@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { getLevelList, saveLevel } from '@/api/member'
 
 interface Level {
   id: string
@@ -13,12 +14,8 @@ interface Level {
   status: number
 }
 
-const tableData = ref<Level[]>([
-  { id: '1', name: '普通会员', icon: '⭐', minPoints: 0, discount: 100, benefits: ['基础权益', '生日礼品'], status: 1 },
-  { id: '2', name: '银卡会员', icon: '🥈', minPoints: 1000, discount: 95, benefits: ['基础权益', '生日礼品', '95折优惠', '免费包邮'], status: 1 },
-  { id: '3', name: '金卡会员', icon: '🥇', minPoints: 5000, discount: 90, benefits: ['基础权益', '生日礼品', '9折优惠', '免费包邮', '专属客服'], status: 1 },
-  { id: '4', name: '钻石会员', icon: '💎', minPoints: 20000, discount: 85, benefits: ['基础权益', '生日礼品', '85折优惠', '免费包邮', '专属客服', 'VIP通道'], status: 1 }
-])
+const tableData = ref<Level[]>([])
+const loading = ref(false)
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -29,6 +26,18 @@ const formData = reactive({
   benefits: '',
   status: 1
 })
+
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await getLevelList({ page: 1, pageSize: 100 })
+    tableData.value = res.data.list || res.data || []
+  } catch (e) {
+    console.log(e)
+  } finally {
+    loading.value = false
+  }
+}
 
 const handleAdd = () => {
   isEdit.value = false
@@ -48,9 +57,17 @@ const handleEdit = (row: Level) => {
   dialogVisible.value = true
 }
 
-const handleSave = () => {
-  ElMessage.success(isEdit.value ? '编辑成功' : '新增成功')
-  dialogVisible.value = false
+const handleSave = async () => {
+  try {
+    const data: any = { ...formData }
+    if (data.benefits) data.benefits = (data.benefits as string).split(/[、,，]/).filter((s: string) => s.trim())
+    await saveLevel(data)
+    ElMessage.success(isEdit.value ? '编辑成功' : '新增成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 const handleDelete = (row: Level) => {
@@ -60,6 +77,8 @@ const handleDelete = (row: Level) => {
     ElMessage.success('删除成功')
   }).catch(() => {})
 }
+
+onMounted(() => loadData())
 </script>
 
 <template>

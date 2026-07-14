@@ -340,13 +340,14 @@ import {
   Search,
   RefreshLeft
 } from '@element-plus/icons-vue'
+import { getExceptionList, handleException as handleExceptionApi } from '@/api/order'
 
 // 统计数据
 const statistics = reactive({
-  today: 28,
-  pending: 15,
-  processing: 8,
-  resolved: 85
+  today: 0,
+  pending: 0,
+  processing: 0,
+  resolved: 0
 })
 
 // 搜索表单
@@ -358,55 +359,7 @@ const searchForm = reactive({
 })
 
 // 异常列表数据
-const exceptionList = ref([
-  {
-    id: 1,
-    happenTime: '2024-06-13 10:30:00',
-    type: 'order',
-    level: 'critical',
-    title: '订单支付超时',
-    content: '订单 ORD202406130001 支付超过30分钟未完成',
-    status: 'pending',
-    handler: null,
-    stackTrace: 'Payment timeout after 30 minutes\nOrder ID: ORD202406130001',
-    relatedData: { orderId: 'ORD202406130001', amount: 9999, payMethod: 'wechat' },
-    handleLogs: [
-      { time: '2024-06-13 10:30:00', content: '异常发生' }
-    ]
-  },
-  {
-    id: 2,
-    happenTime: '2024-06-13 09:15:00',
-    type: 'inventory',
-    level: 'warning',
-    title: '库存不足',
-    content: '商品 iPhone 15 库存低于安全库存（当前库存：30，安全库存：50）',
-    status: 'processing',
-    handler: 'admin',
-    stackTrace: null,
-    relatedData: { productId: 1, productName: 'iPhone 15', stock: 30, minStock: 50 },
-    handleLogs: [
-      { time: '2024-06-13 09:15:00', content: '异常发生' },
-      { time: '2024-06-13 10:00:00', content: '已通知采购部门处理' }
-    ]
-  },
-  {
-    id: 3,
-    happenTime: '2024-06-13 08:00:00',
-    type: 'payment',
-    level: 'critical',
-    title: '支付接口异常',
-    content: '微信支付接口调用失败，错误码：50001',
-    status: 'resolved',
-    handler: 'system',
-    stackTrace: 'Error: Payment gateway timeout\n    at WechatPay.request (wechat.js:45)\n    at async PaymentService.pay (service.js:120)',
-    relatedData: { errorCode: 50001, errorMsg: 'Internal Server Error', retryCount: 3 },
-    handleLogs: [
-      { time: '2024-06-13 08:00:00', content: '异常发生' },
-      { time: '2024-06-13 08:05:00', content: '自动重试成功，异常已解决' }
-    ]
-  }
-])
+const exceptionList = ref<any[]>([])
 
 // 图表实例
 const typeChartRef = ref<HTMLDivElement>()
@@ -622,12 +575,35 @@ const refreshData = () => {
 }
 
 // 加载异常列表
-const loadExceptionList = () => {
+const loadExceptionList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchForm.type) params.type = searchForm.type
+    if (searchForm.level) params.level = searchForm.level
+    if (searchForm.status) params.status = searchForm.status
+    if (searchForm.dateRange) {
+      params.startDate = searchForm.dateRange[0]
+      params.endDate = searchForm.dateRange[1]
+    }
+
+    const res = await getExceptionList(params)
+    exceptionList.value = res.data.list || []
+    total.value = res.data.total || 0
+    if (res.data.statistics) {
+      statistics.today = res.data.statistics.today || 0
+      statistics.pending = res.data.statistics.pending || 0
+      statistics.processing = res.data.statistics.processing || 0
+      statistics.resolved = res.data.statistics.resolved || 0
+    }
+  } catch (error) {
+    console.log(error)
+  } finally {
     tableLoading.value = false
-    ElMessage.success('数据已刷新')
-  }, 500)
+  }
 }
 
 // 表格选中变化
@@ -661,16 +637,25 @@ const handleException = (row: any) => {
 }
 
 // 提交处理
-const submitHandle = () => {
-  ElMessage.success('异常处理中')
-  handleDialogVisible.value = false
-  if (currentException.value) {
-    currentException.value.status = 'processing'
-    currentException.value.handler = 'admin'
-  }
-  loadExceptionList()
-  if (detailDrawerVisible.value) {
-    detailDrawerVisible.value = false
+const submitHandle = async () => {
+  try {
+    await handleExceptionApi({
+      id: currentException.value?.id,
+      method: handleForm.method,
+      remark: handleForm.remark
+    })
+    ElMessage.success('异常处理中')
+    handleDialogVisible.value = false
+    if (currentException.value) {
+      currentException.value.status = 'processing'
+      currentException.value.handler = 'admin'
+    }
+    loadExceptionList()
+    if (detailDrawerVisible.value) {
+      detailDrawerVisible.value = false
+    }
+  } catch (error) {
+    console.log(error)
   }
 }
 

@@ -189,6 +189,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search, RefreshLeft } from '@element-plus/icons-vue'
+import { getFreightTemplateList, saveFreightTemplate, deleteFreightTemplate } from '@/api/logistics'
 
 // 搜索表单
 const searchForm = reactive({
@@ -198,74 +199,13 @@ const searchForm = reactive({
 })
 
 // 模板列表数据
-const templateList = ref([
-  {
-    id: 1,
-    name: '标准快递模板',
-    type: 'piece',
-    baseFee: 10,
-    extraFee: 5,
-    freeThreshold: 99,
-    regions: '全国, 华东, 华南, 华北, 华中',
-    status: 1
-  },
-  {
-    id: 2,
-    name: '偏远地区模板',
-    type: 'piece',
-    baseFee: 18,
-    extraFee: 8,
-    freeThreshold: 0,
-    regions: '西南, 西北, 东北',
-    status: 1
-  },
-  {
-    id: 3,
-    name: '重货物流模板',
-    type: 'weight',
-    baseFee: 8,
-    extraFee: 3,
-    freeThreshold: 500,
-    regions: '全国, 华东, 华南, 华北',
-    status: 1
-  },
-  {
-    id: 4,
-    name: '港澳台专线模板',
-    type: 'piece',
-    baseFee: 30,
-    extraFee: 15,
-    freeThreshold: 0,
-    regions: '港澳台',
-    status: 0
-  },
-  {
-    id: 5,
-    name: '海外直邮模板',
-    type: 'weight',
-    baseFee: 60,
-    extraFee: 20,
-    freeThreshold: 0,
-    regions: '海外',
-    status: 1
-  },
-  {
-    id: 6,
-    name: '同城配送模板',
-    type: 'piece',
-    baseFee: 5,
-    extraFee: 2,
-    freeThreshold: 39,
-    regions: '华东, 华南',
-    status: 1
-  }
-])
+const templateList = ref<any[]>([])
 
 // 表格相关
 const tableLoading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(100)
+const total = ref(0)
 
 // 对话框相关
 const dialogVisible = ref(false)
@@ -308,11 +248,21 @@ const refreshList = () => {
   loadTemplateList()
 }
 
-const loadTemplateList = () => {
+const loadTemplateList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params: any = { page: currentPage.value, pageSize: pageSize.value }
+    if (searchForm.name) params.name = searchForm.name
+    if (searchForm.type) params.type = searchForm.type
+    if (searchForm.status !== '') params.status = searchForm.status
+    const res = await getFreightTemplateList(params)
+    templateList.value = res.data.list || res.data.records || []
+    total.value = res.data.total || 0
+  } catch (e) {
+    console.log(e)
+  } finally {
     tableLoading.value = false
-  }, 500)
+  }
 }
 
 const handleSizeChange = (val: number) => {
@@ -352,8 +302,14 @@ const toggleStatus = (row: any) => {
     confirmButtonText: '确认',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success(`${action}成功`)
+  }).then(async () => {
+    try {
+      await saveFreightTemplate({ id: row.id, status: row.status })
+      ElMessage.success(`${action}成功`)
+    } catch (e) {
+      row.status = row.status === 1 ? 0 : 1
+      console.log(e)
+    }
   }).catch(() => {
     row.status = row.status === 1 ? 0 : 1
   })
@@ -365,18 +321,30 @@ const deleteTemplate = (row: any) => {
     confirmButtonText: '确认',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
-    loadTemplateList()
+  }).then(async () => {
+    try {
+      await deleteFreightTemplate(row.id)
+      ElMessage.success('删除成功')
+      loadTemplateList()
+    } catch (e) {
+      console.log(e)
+    }
   }).catch(() => { })
 }
 
 // 提交表单
 const submitForm = async () => {
   await formRef.value?.validate()
-  ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
-  dialogVisible.value = false
-  loadTemplateList()
+  try {
+    const data: any = { ...templateForm }
+    data.regions = (data.regions as string[]).join(', ')
+    await saveFreightTemplate(data)
+    ElMessage.success(dialogType.value === 'create' ? '创建成功' : '更新成功')
+    dialogVisible.value = false
+    loadTemplateList()
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 const closeDialog = () => {

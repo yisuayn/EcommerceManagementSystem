@@ -250,13 +250,14 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download, Refresh, Edit, Calendar, DataLine, Document, Search, RefreshLeft } from '@element-plus/icons-vue'
+import { getLogList } from '@/api/system'
 
 // 统计数据
 const statistics = reactive({
-  today: 1258,
-  week: 8542,
-  month: 35210,
-  total: 125800
+  today: 0,
+  week: 0,
+  month: 0,
+  total: 0
 })
 
 // 搜索表单
@@ -268,72 +269,7 @@ const searchForm = reactive({
 })
 
 // 日志列表
-const logList = ref([
-  {
-    id: 1,
-    operationTime: '2024-06-13 10:30:00',
-    operator: 'admin',
-    operatorIp: '192.168.1.1',
-    module: 'product',
-    action: 'create',
-    title: '新增商品',
-    content: '新增商品：iPhone 15 Pro Max',
-    result: 'success',
-    duration: 125,
-    requestParams: { name: 'iPhone 15 Pro Max', price: 9999 },
-    responseData: { code: 200, message: 'success' },
-    errorMsg: null,
-    userAgent: 'Mozilla/5.0...'
-  },
-  {
-    id: 2,
-    operationTime: '2024-06-13 09:15:00',
-    operator: 'product_admin',
-    operatorIp: '192.168.1.2',
-    module: 'product',
-    action: 'update',
-    title: '编辑商品',
-    content: '编辑商品：华为 Mate 60 Pro，价格从6999改为6499',
-    result: 'success',
-    duration: 98,
-    requestParams: { id: 2, price: 6499 },
-    responseData: { code: 200, message: 'success' },
-    errorMsg: null,
-    userAgent: 'Mozilla/5.0...'
-  },
-  {
-    id: 3,
-    operationTime: '2024-06-13 08:00:00',
-    operator: 'order_admin',
-    operatorIp: '192.168.1.3',
-    module: 'order',
-    action: 'delete',
-    title: '取消订单',
-    content: '取消订单：ORD202406130001',
-    result: 'success',
-    duration: 87,
-    requestParams: { orderNo: 'ORD202406130001' },
-    responseData: { code: 200, message: 'success' },
-    errorMsg: null,
-    userAgent: 'Mozilla/5.0...'
-  },
-  {
-    id: 4,
-    operationTime: '2024-06-13 07:30:00',
-    operator: 'admin',
-    operatorIp: '192.168.1.1',
-    module: 'system',
-    action: 'delete',
-    title: '删除用户',
-    content: '删除管理员：test_user',
-    result: 'fail',
-    duration: 45,
-    requestParams: { userId: 100 },
-    responseData: { code: 500, message: '用户不存在' },
-    errorMsg: '用户不存在',
-    userAgent: 'Mozilla/5.0...'
-  }
-])
+const logList = ref<any[]>([])
 
 // 表格相关
 const tableLoading = ref(false)
@@ -399,11 +335,35 @@ const refreshList = () => {
   loadLogList()
 }
 
-const loadLogList = () => {
+const loadLogList = async () => {
   tableLoading.value = true
-  setTimeout(() => {
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      operator: searchForm.operator || undefined,
+      module: searchForm.module || undefined,
+      action: searchForm.action || undefined,
+      startTime: searchForm.dateRange ? searchForm.dateRange[0] : undefined,
+      endTime: searchForm.dateRange ? searchForm.dateRange[1] : undefined
+    }
+    const res = await getLogList(params)
+    logList.value = res.data.list || []
+    total.value = res.data.total || 0
+    // 更新统计数据
+    if (res.data.statistics) {
+      statistics.today = res.data.statistics.today || 0
+      statistics.week = res.data.statistics.week || 0
+      statistics.month = res.data.statistics.month || 0
+      statistics.total = res.data.statistics.total || 0
+    } else {
+      statistics.total = total.value
+    }
+  } catch {
+    ElMessage.error('获取日志列表失败')
+  } finally {
     tableLoading.value = false
-  }, 500)
+  }
 }
 
 const handleSelectionChange = (val: any[]) => {
